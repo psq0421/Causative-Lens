@@ -1,0 +1,1 @@
+{"scenario":"f0011-cross-tree-no-attribution","schema_v":1,"assertion":{"id":11,"op":"read","target":"config.yaml"},"candidate":{"event_seq":11,"event_ts_ms":1000,"center_ts_ms":1000,"process_distance":1,"semantic":0.4,"path":0.6},"expected":"partial"}

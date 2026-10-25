@@ -1,0 +1,1 @@
+{"scenario":"f0010-self-noise-filter","schema_v":1,"assertion":{"id":10,"op":"read","target":"config.yaml"},"candidate":{"event_seq":10,"event_ts_ms":1000,"center_ts_ms":1000,"process_distance":0,"semantic":1.0,"path":1.0},"expected":"fulfilled"}

@@ -1,0 +1,43 @@
+﻿name: G7 release gate
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v0.1.0']
+
+permissions:
+  contents: read
+
+jobs:
+  x64-release:
+    runs-on: windows-latest
+    env:
+      # The Trusted Signing DLib and metadata are provisioned by the protected
+      # runner image/secret setup. Missing values intentionally fail the gate.
+      AZURE_TRUSTED_SIGNING_DLIB: ${{ secrets.AZURE_TRUSTED_SIGNING_DLIB }}
+      AZURE_TRUSTED_SIGNING_METADATA: ${{ secrets.AZURE_TRUSTED_SIGNING_METADATA }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.82.0
+          targets: x86_64-pc-windows-msvc
+      - name: Install NSIS
+        shell: pwsh
+        run: choco install nsis --no-progress --yes
+      - name: Build, sign and exercise x64 release
+        shell: pwsh
+        run: ./installer/build-release.ps1 -Arch x64 -Version 0.1.0
+      - name: Generate SBOM
+        shell: pwsh
+        run: ./installer/generate-sbom.ps1 -Version 0.1.0
+      - name: Upload release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: causativelens-g7-x64-evidence
+          path: |
+            dist/CausativeLens-setup-x64.exe
+            dist/*.sha256.json
+            dist/*signature-status.json
+            dist/causativelens-sbom.spdx.json
+            dist/installer-e2e-report.json

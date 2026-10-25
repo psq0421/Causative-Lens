@@ -1,0 +1,16 @@
+﻿[package]
+name = "clens-arch-tests"
+version = "0.1.0"
+edition.workspace = true
+publish = false
+
+[dev-dependencies]
+clens-cli = { path = "../clens-cli" }
+clens-capture = { path = "../clens-capture" }
+clens-daemon = { path = "../clens-daemon" }
+clens-types = { path = "../clens-types" }
+
+[[test]]
+name = "architecture_contract"
+path = "tests/architecture_contract.rs"
+

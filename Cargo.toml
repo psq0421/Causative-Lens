@@ -1,0 +1,30 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/clens-types",
+    "crates/clens-capture",
+    "crates/clens-harnessd",
+    "crates/clens-core",
+    "crates/clens-storage",
+    "crates/clens-daemon",
+    "crates/clens-daemon-client",
+    "crates/clens-cli",
+    "crates/clens-arch-tests",
+    "crates/clens-gui",
+]
+
+[workspace.package]
+edition = "2021"
+license = "MIT"
+rust-version = "1.82"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["serde", "v4"] }
+
+[profile.release]
+strip = "symbols"
+lto = "thin"
+codegen-units = 1
