@@ -40,7 +40,7 @@ v0.1.0 deliberately observes. Intervention and decision commands are reserved fo
 
 ## Release safety
 
-Without Azure Trusted Signing credentials, local builds keep the `-dev` suffix and formal Release is blocked. A formal release requires signed x64 and ARM64 installers, SBOM, deterministic-build evidence, and the installer E2E matrix. See [the release gate](docs/release/g7-release-gate.md).
+Every version before `v1.0.0` is beta/test software. The `v0.1.0` prerelease uses an explicitly labelled x64 `-dev` installer; it is unsigned and ARM64 is deferred. A stable release requires signed x64 and ARM64 installers, SBOM, deterministic-build evidence, and the installer E2E matrix. See [the release gate](docs/release/g7-release-gate.md).
 
 ## Contributing
 
