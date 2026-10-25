@@ -6,6 +6,8 @@ CausativeLens v0.1.0 是 Windows 上的唯讀因果觀測工具。一個 `clens-
 
 ## 語言
 
+> **目前 Beta 限制（2026-10-25）：** `run/attach` 目前回傳 `offline`，廠商軌跡自動接入及完整擷取/持久化鏈路尚未接通。請先閱讀 [17 款產品接入教程（简体中文）](docs/guide/runtime-integration_CN.md)或 [English](docs/guide/runtime-integration.md)。
+
 產品支援 **繁體中文**、**简体中文** 與 **English (US)**。
 
 - CLI：`--lang en-US|zh-CN|zh-TW`，或設定 `CAUSATIVELENS_LANG`。

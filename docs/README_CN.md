@@ -7,6 +7,7 @@
 ## 指南
 
 - [快速入门](快速入门.md) · [Quick start](quick-start.md) · [快速入門](快速入門.md)
+- [17 款产品接入教程：已验证步骤与当前缺口](guide/runtime-integration_CN.md) · [English](guide/runtime-integration.md)
 - [贡献指南](guide/contributing_CN.md) · [Contributing](guide/contributing.md) · [貢獻指南](guide/contributing_TW.md)
 - [语言支持](guide/language-support_CN.md) · [Language support](guide/language-support.md) · [語言支援](guide/language-support_TW.md)
 
@@ -44,5 +45,5 @@
 - [兼容性矩阵](reference/compatibility_CN.md)
 - [附录索引](reference/appendices_CN.md)
 
-详细计划与规格保留原契约编号（`CL-BLUEPRINT-001`、`.cllens`、`.clspool`）。每份面向用户的指南都有 English、简体中文、繁體中文版本；历史审计文件通过双语索引接入，评审实现时不必猜测权威来源。
+详细计划与规格保留原契约编号（`CL-BLUEPRINT-001`、`.cllens`、`.clspool`）。各指南旁标注已有语言版本；历史审计文件通过双语索引接入，评审实现时不必猜测权威来源。
 

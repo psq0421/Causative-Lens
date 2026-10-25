@@ -7,6 +7,7 @@ Choose a language: [English (US)](README.md) · [简体中文](README_CN.md) · 
 ## Guides
 
 - [Quick start](quick-start.md) · [快速入门](快速入门.md) · [快速入門](快速入門.md)
+- [17-product integration tutorial: verified steps and current gaps](guide/runtime-integration.md) · [简体中文](guide/runtime-integration_CN.md)
 - [Contributing](guide/contributing.md) · [贡献指南](guide/contributing_CN.md) · [貢獻指南](guide/contributing_TW.md)
 - [Language support](guide/language-support.md) · [语言支持](guide/language-support_CN.md) · [語言支援](guide/language-support_TW.md)
 
@@ -44,5 +45,5 @@ Choose a language: [English (US)](README.md) · [简体中文](README_CN.md) · 
 - [Compatibility matrix](reference/compatibility.md)
 - [Appendix map](reference/appendices.md)
 
-The detailed plan/spec files retain their original contract identifiers (`CL-BLUEPRINT-001`, `.cllens`, `.clspool`). Every user-facing guide has English, Simplified Chinese, and Traditional Chinese companions. Contract-heavy historical audit files are linked from the bilingual indexes so an implementation can be reviewed without guessing which document is authoritative.
+The detailed plan/spec files retain their original contract identifiers (`CL-BLUEPRINT-001`, `.cllens`, `.clspool`). Language companions are listed beside each guide. Contract-heavy historical audit files are linked from the bilingual indexes so an implementation can be reviewed without guessing which document is authoritative.
 

@@ -7,6 +7,7 @@
 ## 指南
 
 - [快速入門](快速入門.md) · [Quick start](quick-start.md) · [简体中文](快速入门.md)
+- [17 款產品接入教程與目前限制（简体中文）](guide/runtime-integration_CN.md) · [English](guide/runtime-integration.md)
 - [貢獻指南](guide/contributing_TW.md) · [Contributing](guide/contributing.md) · [贡献指南](guide/contributing_CN.md)
 - [語言支援](guide/language-support_TW.md) · [Language support](guide/language-support.md) · [语言支持](guide/language-support_CN.md)
 

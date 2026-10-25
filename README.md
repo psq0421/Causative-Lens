@@ -4,6 +4,8 @@
 
 CausativeLens v0.1.0 is an observe-only causal observability tool for Windows. One `clens-daemon` owns the engine state; `clens.exe` and `clens-gui.exe` are two frontends over `causativelens-rpc`. The system records ETW metadata and structured agent traces, aligns assertions with observed events, and keeps the evidence replayable.
 
+> **Current Beta limitation (2026-10-25):** the description above is the intended architecture. `run/attach` currently return `offline`; automatic vendor trace ingestion and the complete resident capture/persistence pipeline are not connected. See the [17-product integration tutorial and verified status](docs/guide/runtime-integration.md) before attempting live monitoring.
+
 ## Languages
 
 The product supports **English (US)**, **Simplified Chinese**, and **Traditional Chinese**.
@@ -18,6 +20,7 @@ Language switch: [简体中文](README_CN.md) · [繁體中文](README_TW.md) ·
 ## Start here
 
 - [Quick start](docs/quick-start.md) · [快速入门](docs/快速入门.md) · [快速入門](docs/快速入門.md)
+- [17-product integration tutorial and current limitations](docs/guide/runtime-integration.md)
 - [Documentation index](docs/README.md)
 - [Architecture and contracts](docs/architecture/README.md)
 - [Release notes](docs/release/CHANGELOG.md)

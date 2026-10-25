@@ -2,7 +2,9 @@
 
 > **A session is a letter from a running program to your future self. CausativeLens keeps the envelope, the timestamp, and the fingerprints.**
 
-This guide covers the complete v0.1.0 observe-only workflow on Windows.
+This guide introduces the intended v0.1.0 observe-only workflow on Windows.
+
+> **Beta status, checked 2026-10-25:** `run/attach` currently return `offline`; vendor log conversion/automatic tail and the complete capture/persistence pipeline are not connected. `open` currently creates an in-memory session rather than loading the supplied file. The commands below include intended interfaces, not proof of a complete workflow. Use the [17-product integration tutorial](guide/runtime-integration.md) for verified steps, raw-log acquisition and a manual RPC walkthrough.
 
 ## 1. Install
 
@@ -36,15 +38,15 @@ clens --lang zh-TW doctor
 $env:CAUSATIVELENS_LANG = 'en-US'
 ```
 
-## 3. Start a live observation
+## 3. Intended live interfaces (not connected in this Beta)
 
-Embedded mode launches the agent as a child process and observes its full lifetime:
+The intended embedded mode will launch the agent and observe its full lifetime. Currently this command returns `offline` without launching the agent:
 
 ```powershell
 clens run -- your-agent.exe --config config.yaml
 ```
 
-Use attach mode for an existing process tree:
+The intended attach interface for an existing process tree is also not connected:
 
 ```powershell
 clens attach --pid 12345
@@ -53,6 +55,8 @@ clens attach --pid 12345
 The v0.1.0 boundary is read-only. CausativeLens records metadata and traces; it does not inject, modify, enforce, or make decisions for the agent.
 
 ## 4. Watch the session
+
+Current `watch/timeline` do not select the manual RPC session by ticket, and `export` returns `offline`. Do not interpret an empty view as proof that no behavior occurred.
 
 ```powershell
 clens watch
@@ -87,6 +91,8 @@ The response has five stable sections: trigger assertion, evidence events, verdi
 
 ## 6. Open and replay sessions
 
+Currently `open` does not load the named `.cllens` file. The existing replay command compares supplied JSON arrays; it does not implement database-session recovery.
+
 ```powershell
 clens open path\to\session.cllens
 clens replay --baseline baseline.json --branch branch.json
@@ -97,9 +103,7 @@ v0.1.0 replay is a read-only overlay. It compares observed runs and highlights d
 
 ## 7. Harness logs and adapters
 
-Harness input is append-only JSONL. The built-in adapter accepts DeepSeek-style events and a generic JSONL Tier3 fallback. Runtime descriptors cover the planned Agent ecosystem without hard-blocking unknown versions. Use the daemon doctor and adapter fixtures to see whether a runtime has a verified schema sample or is using fallback parsing.
-
-A log rotation or truncation is reported as health data rather than silently skipped. Unknown fields are retained; malformed lines enter quarantine.
+Harness input uses append-only JSONL. Generic parsing, tail, quarantine and schema-sentinel primitives exist at library level, but automatic vendor input is not connected. Runtime descriptors remain unverified Tier3 entries. Direct `session.ingest_harness` RPC bypasses the generic parser, so zero quarantine counters do not establish healthy input. There is no `clens adapters doctor` CLI command. See the [detailed integration tutorial](guide/runtime-integration.md).
 
 ## 8. Troubleshooting
 

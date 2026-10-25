@@ -4,6 +4,8 @@
 
 CausativeLens v0.1.0 是 Windows 上的只读因果观测工具。一个 `clens-daemon` 持有引擎状态，`clens.exe` 与 `clens-gui.exe` 通过 `causativelens-rpc` 作为两个前端工作。系统记录 ETW 元数据和结构化 Agent 轨迹，把断言与真实事件对齐，并保留可回放的证据。
 
+> **当前 Beta 限制（2026-10-25）：** 上述是目标架构。`run/attach` 目前返回 `offline`，厂商轨迹自动接入及完整的采集常驻/持久化链路尚未接通。实时监测前请先阅读[17 款产品接入教程与已验证状态](docs/guide/runtime-integration_CN.md)。
+
 ## 语言
 
 产品支持 **简体中文**、**繁體中文** 与 **English (US)**。
@@ -18,6 +20,7 @@ CausativeLens v0.1.0 是 Windows 上的只读因果观测工具。一个 `clens-
 ## 从这里开始
 
 - [快速入门](docs/快速入门.md) · [Quick start](docs/quick-start.md) · [快速入門](docs/快速入門.md)
+- [17 款产品接入教程与当前限制](docs/guide/runtime-integration_CN.md)
 - [文档目录](docs/README_CN.md)
 - [架构与契约](docs/architecture/README_CN.md)
 - [发布说明](docs/release/CHANGELOG_CN.md)
