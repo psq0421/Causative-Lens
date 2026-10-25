@@ -6,7 +6,7 @@ license.workspace = true
 
 [features]
 default = []
-tauri-shell = ["dep:tauri", "dep:tauri-build"]
+tauri-shell = ["dep:tauri", "dep:tauri-build", "dep:tauri-plugin-dialog"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [], optional = true }
@@ -17,6 +17,7 @@ clens-daemon-client = { path = "../clens-daemon-client" }
 serde.workspace = true
 serde_json.workspace = true
 tauri = { version = "2", features = [], optional = true }
+tauri-plugin-dialog = { version = "2", optional = true }
 
 [[bin]]
 name = "clens-gui"

@@ -1,5 +1,6 @@
 # Rust build output
 /target/
+/tests/gui/node_modules/
 
 # Local installer and release output
 /dist/

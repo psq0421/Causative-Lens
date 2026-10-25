@@ -1,54 +1,117 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light dark" />
-    <title>CausativeLens</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <div class="app-shell">
-      <header class="title-bar">
-        <div class="brand-mark" aria-label="CausativeLens">CL</div>
-        <div class="brand-copy"><strong>CausativeLens</strong><span id="mode-badge">observe</span></div>
-        <div class="title-spacer"></div>
-        <label class="language-picker" for="language-select" data-i18n="language.label">语言</label>
-        <select id="language-select" aria-label="Language">
-          <option value="zh-CN">简体中文</option>
-          <option value="zh-TW">繁體中文</option>
-          <option value="en-US">English (US)</option>
-        </select>
-        <button class="icon-button" id="theme-toggle" data-i18n-aria-label="theme.toggle">◐</button>
-        <button class="icon-button" id="help-button" data-i18n-aria-label="help.open">?</button>
-      </header>
-      <div class="workspace-layout">
-        <nav class="side-nav" data-i18n-aria-label="workspace.nav">
-          <button class="nav-item active" data-workspace="sessions"><span>▦</span><span data-i18n="nav.sessions">Sessions</span></button>
-          <button class="nav-item" data-workspace="timeline"><span>⌁</span><span data-i18n="nav.timeline">Timeline</span></button>
-          <button class="nav-item" data-workspace="graph"><span>◈</span><span data-i18n="nav.graph">Graph</span></button>
-          <button class="nav-item" data-workspace="replay"><span>↻</span><span data-i18n="nav.replay">Replay / Query</span></button>
-          <div class="nav-bottom"><button class="nav-item" data-workspace="about"><span>ⓘ</span><span data-i18n="nav.about">About</span></button></div>
-        </nav>
-        <main class="main-content">
-          <section class="command-strip">
-            <button class="command-search" id="command-search"><span>⌕</span><span data-i18n="command.search">搜索命令或会话</span><kbd>Ctrl K</kbd></button>
-            <div class="connection-pill" id="connection-status"><i></i><span data-i18n="connection.disconnected">daemon 未连接</span></div>
-          </section>
-          <section class="workspace" id="workspace-sessions" data-panel="sessions">
-            <div class="workspace-heading"><div><p class="eyebrow">WORKSPACE 01</p><h1 data-i18n="nav.sessions">Sessions</h1><p class="subhead" data-i18n="sessions.subtitle">选择一个观测会话，查看它的实时状态。</p></div><button class="primary-button" id="open-session" data-i18n="sessions.open">打开会话</button></div>
-            <div class="summary-grid"><article class="summary-card"><span data-i18n="summary.mode">当前模式</span><strong>observe</strong><small data-i18n="summary.readonly">只读观测</small></article><article class="summary-card"><span data-i18n="summary.capture">采集状态</span><strong id="session-health" data-i18n="connection.waiting">等待连接</strong><small data-i18n="summary.sources">ETW 与 Harness</small></article><article class="summary-card"><span data-i18n="summary.compatibility">兼容性</span><strong>Tier3 fallback</strong><small data-i18n="summary.unknown">未知版本不阻断</small></article></div>
-            <div class="empty-state"><div class="empty-icon">◎</div><h2 data-i18n="sessions.empty.title">还没有打开会话</h2><p data-i18n="sessions.empty.body">使用 CLI 的 <code>clens run</code> 或点击上面的按钮开始一次只读观测。</p><button class="secondary-button" id="copy-run" data-i18n="sessions.copyRun">复制 clens run 命令</button></div>
-          </section>
-          <section class="workspace hidden" id="workspace-timeline" data-panel="timeline"><div class="workspace-heading"><div><p class="eyebrow">WORKSPACE 02</p><h1 data-i18n="nav.timeline">Timeline</h1><p class="subhead" data-i18n="timeline.subtitle">断言和系统事件按水位线增量到达。</p></div><span class="metric-badge" data-i18n="timeline.virtualized">窗口化渲染</span></div><div class="toolbar"><button class="chip active" data-i18n="filter.all">全部</button><button class="chip" data-i18n="filter.assertions">断言</button><button class="chip" data-i18n="filter.files">文件</button><button class="chip" data-i18n="filter.network">网络</button><span class="toolbar-spacer"></span><span class="muted" data-i18n="timeline.domLimit">DOM 上限 500</span></div><div class="timeline-list" id="timeline-list" role="log" aria-live="polite"></div></section>
-          <section class="workspace hidden" id="workspace-graph" data-panel="graph"><div class="workspace-heading"><div><p class="eyebrow">WORKSPACE 03</p><h1 data-i18n="nav.graph">Graph</h1><p class="subhead" data-i18n="graph.subtitle">履约关系和因果断点。</p></div><span class="metric-badge">graph.delta &lt; 8ms</span></div><div class="graph-frame"><canvas id="graph-canvas" data-i18n-aria-label="graph.canvas"></canvas><div class="canvas-overlay" data-i18n="graph.waiting">等待 graph.delta</div></div></section>
-          <section class="workspace hidden" id="workspace-replay" data-panel="replay"><div class="workspace-heading"><div><p class="eyebrow">WORKSPACE 04</p><h1 data-i18n="nav.replay">Replay / Query</h1><p class="subhead" data-i18n="replay.subtitle">回放、why 查询和只读导出。</p></div><button class="secondary-button" id="copy-why" data-i18n="replay.copyWhy">复制对应 CLI 命令</button></div><div class="query-card"><label for="query-input" data-i18n="query.label">受限查询</label><div class="query-row"><input id="query-input" data-i18n-placeholder="query.placeholder" placeholder="例如：为什么它修改了 config.yaml？" /><button class="primary-button" id="run-query" data-i18n="query.run">查询</button></div><p class="hint" data-i18n="query.hint">查询使用确定性模板；无法识别时会提示对应的 <code>clens why --path</code> 命令。</p></div></section>
-          <section class="workspace hidden" id="workspace-about" data-panel="about"><div class="workspace-heading"><div><p class="eyebrow">CAUSATIVELENS</p><h1 data-i18n="nav.about">About</h1><p class="subhead" data-i18n="about.subtitle">实时、只读、可回放的因果观测。</p></div></div><div class="about-card"><strong>CausativeLens <span id="version-label">0.1.0</span></strong><p data-i18n="about.architecture">一 daemon，两前端。GUI 通过 causativelens-rpc 访问 daemon，不复制引擎逻辑。</p><p class="muted" data-i18n="about.compatibility">兼容性：未知 Agent 版本使用 Tier3 fallback，不强制阻断。</p></div></section>
-        </main>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <title>CausativeLens</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="side-nav">
+      <a class="brand" href="#" aria-label="CausativeLens">
+        <svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="16" cy="16" r="10"/><circle cx="16" cy="16" r="4"/><path d="m23 23 8 8M16 2v4M2 16h4"/></svg>
+        <span>CausativeLens<small>OBSERVE / BETA</small></span>
+      </a>
+      <p class="nav-label" data-i18n="nav.workspace">工作区</p>
+      <nav aria-label="Workspace">
+        <button class="nav-item active" data-workspace="sessions"><span class="nav-icon">◉</span><span data-i18n="nav.sessions">监听</span></button>
+        <button class="nav-item" data-workspace="timeline"><span class="nav-icon">≋</span><span data-i18n="nav.timeline">时间线</span><span class="nav-count" id="nav-count">0</span></button>
+        <button class="nav-item" data-workspace="graph"><span class="nav-icon">◇</span><span data-i18n="nav.graph">履约图</span></button>
+        <button class="nav-item" data-workspace="replay"><span class="nav-icon">⌕</span><span data-i18n="nav.replay">查询</span></button>
+      </nav>
+      <div class="nav-footer">
+        <div class="privacy-note"><span>⌂</span><p data-i18n="local.note">轨迹留在本机。只读，不干预。</p></div>
+        <button class="nav-item" data-workspace="about"><span class="nav-icon">ⓘ</span><span data-i18n="nav.about">关于与帮助</span></button>
       </div>
+    </aside>
+    <div class="app-main">
+      <header class="title-bar">
+        <div class="breadcrumb"><span>CausativeLens</span><span>/</span><strong id="page-label" data-i18n="nav.sessions">监听</strong></div>
+        <div class="title-actions">
+          <button id="connection-status" class="connection-pill" title="Reconnect"><i></i><span data-i18n="connection.connecting">正在连接</span></button>
+          <select id="language-select" aria-label="Language"><option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="en-US">English (US)</option></select>
+          <button class="icon-button" id="theme-toggle" data-i18n-aria-label="theme.toggle">◐</button>
+        </div>
+      </header>
+      <main>
+        <div id="message-banner" class="message-banner hidden" role="status"></div>
+        <section class="workspace" data-panel="sessions">
+          <div class="workspace-heading">
+            <div><p class="eyebrow">A LITTLE LIGHT, A CLEARER TRACE.</p><h1 data-i18n="listen.title">让每一步，都有迹可循。</h1><p class="subhead" data-i18n="listen.subtitle">选好软件和文件夹，剩下的交给监听器。</p></div>
+            <span class="mode-badge"><i></i>observe</span>
+          </div>
+          <div class="listen-layout">
+            <div class="setup-card">
+              <ol class="stepper" aria-label="Setup progress">
+                <li data-step-marker="0" aria-current="step"><span>1</span><b data-i18n="step.software">选择软件</b></li>
+                <li data-step-marker="1"><span>2</span><b data-i18n="step.folder">选择文件夹</b></li>
+                <li data-step-marker="2"><span>3</span><b data-i18n="step.review">检查并监听</b></li>
+              </ol>
+              <div class="step-content" data-step="0">
+                <span class="field-overline">01 / SOFTWARE</span><h2 data-i18n="software.title">请选择你使用的软件</h2><p class="muted" data-i18n="software.help">内置 17 家模板；不在列表中？选择 Others。</p>
+                <label for="runtime-select" data-i18n="software.label">Agent 软件</label>
+                <select id="runtime-select" disabled><option value="" data-i18n="software.placeholder">请选择软件…</option></select>
+                <p class="section-label" data-i18n="software.popular">快速选择</p><div id="featured-runtimes" class="featured-runtimes"></div>
+                <div class="inline-note"><span>ⓘ</span><span data-i18n="software.compatibility">按真实日志格式识别，不因版本陌生而拒绝连接。</span></div>
+                <div class="step-actions"><span></span><button class="primary-button" id="software-next" disabled><span data-i18n="next">下一步</span><span>→</span></button></div>
+              </div>
+              <div class="step-content hidden" data-step="1">
+                <span class="field-overline">02 / DIRECTORY</span><h2 data-i18n="folder.title">它的轨迹，存在哪里？</h2><p class="muted" data-i18n="folder.help">选择该软件的项目、日志或安装目录，我们会自动查找轨迹。</p>
+                <label for="monitor-folder" data-i18n="folder.label">文件夹</label>
+                <div class="folder-input"><input id="monitor-folder" type="text" spellcheck="false" data-i18n-placeholder="folder.placeholder" /><button class="secondary-button" id="browse-folder" data-i18n="folder.browse">浏览…</button></div>
+                <label class="check-row"><input id="include-profile" type="checkbox" checked /><span data-i18n="folder.profile">同时检查该软件的用户日志目录（可能包含其他会话）</span></label>
+                <label class="check-row"><input id="read-existing" type="checkbox" checked /><span data-i18n="folder.existing">载入已有的近期轨迹，再持续监听新增内容</span></label>
+                <div class="guidance" id="template-guidance"></div>
+                <div class="step-actions"><button class="text-button" id="folder-back" data-i18n="back">上一步</button><button class="primary-button" id="probe-folder" disabled data-i18n="folder.check">检查目录</button></div>
+              </div>
+              <div class="step-content hidden" data-step="2">
+                <span class="field-overline">03 / READY WHEN YOU ARE</span><h2 id="probe-title"></h2><p class="muted" id="probe-description"></p>
+                <dl class="review-summary"><div><dt data-i18n="software.label">软件</dt><dd id="review-runtime"></dd></div><div><dt data-i18n="folder.label">文件夹</dt><dd id="review-folder"></dd></div></dl>
+                <details class="scan-details"><summary data-i18n="review.scope">查看实际检查范围与文件</summary><ul id="probe-files"></ul></details>
+                <div class="inline-note"><span>ⓘ</span><span data-i18n="review.boundary">当前监听软件轨迹；未连接 ETW 时，不会把工具调用标成系统证据。云端操作只能看到它公开的日志。</span></div>
+                <div class="step-actions"><button class="text-button" id="review-back" data-i18n="back">上一步</button><button class="primary-button" id="start-monitor" data-i18n="monitor.start">开始监听</button></div>
+              </div>
+            </div>
+            <aside class="context-column">
+              <article class="context-card"><div class="context-symbol">⌁</div><h3 data-i18n="guide.title">第一次用？就从这里开始。</h3><p data-i18n="guide.body">先让 Agent 完成一个小任务。轨迹一旦到达，就会出现在时间线里；没有数据时，我们会告诉你缺了哪一步。</p><div class="mini-trace"><span></span><span></span><span></span></div></article>
+              <article class="context-card subtle"><h3 data-i18n="boundary.title">看见意图，也尊重边界。</h3><p data-i18n="boundary.body">工具说“已写入”，与系统证实“发生写入”是两回事。我们始终标明来源。</p><span class="text-badge" data-i18n="local.badge">本地处理 · 只读</span></article>
+            </aside>
+          </div>
+          <article id="active-monitor" class="monitor-card hidden" aria-live="polite">
+            <div class="monitor-card-top"><div><div class="live-label" id="live-label"></div><h2 id="active-runtime"></h2><p id="active-folder" class="muted mono"></p></div><div class="monitor-actions"><button class="secondary-button" id="view-timeline" data-i18n="monitor.view">查看时间线</button><button class="text-button danger" id="stop-monitor" data-i18n="monitor.stop">停止监听</button></div></div>
+            <div class="monitor-stats"><div><strong id="stat-files">0</strong><span data-i18n="stat.files">轨迹文件</span></div><div><strong id="stat-records">0</strong><span data-i18n="stat.records">已识别记录</span></div><div><strong id="stat-assertions">0</strong><span data-i18n="stat.assertions">提取断言</span></div><div><strong id="stat-rejected">0</strong><span data-i18n="stat.rejected">待检查记录</span></div></div>
+            <p class="monitor-health" id="monitor-health"></p>
+          </article>
+        </section>
+        <section class="workspace hidden" data-panel="timeline">
+          <div class="workspace-heading"><div><p class="eyebrow">THE STORY, AS IT HAPPENS.</p><h1 data-i18n="nav.timeline">时间线</h1><p class="subhead" data-i18n="timeline.subtitle">将意图、文件与网络活动放在同一条线上，来源始终清晰。</p></div><button class="secondary-button" id="timeline-setup" data-i18n="timeline.setup">配置监听</button></div>
+          <div class="timeline-summary"><span id="timeline-source" data-i18n="timeline.noSession">尚未开始监听</span><span class="muted" id="last-updated"></span></div>
+          <div class="timeline-card">
+            <div class="toolbar">
+              <div class="filter-group" role="group" aria-label="Timeline filter">
+                <button class="chip active" data-filter="all" aria-pressed="true"><span data-i18n="filter.all">全部</span><b data-count="all">0</b></button>
+                <button class="chip" data-filter="assertions" aria-pressed="false"><span data-i18n="filter.assertions">断言</span><b data-count="assertions">0</b></button>
+                <button class="chip" data-filter="files" aria-pressed="false"><span data-i18n="filter.files">文件</span><b data-count="files">0</b></button>
+                <button class="chip" data-filter="network" aria-pressed="false"><span data-i18n="filter.network">网络</span><b data-count="network">0</b></button>
+              </div>
+              <div class="timeline-tools"><input id="timeline-search" type="search" data-i18n-placeholder="timeline.search" aria-label="Search timeline" /><button class="icon-button" id="follow-toggle" aria-pressed="true" data-i18n-aria-label="timeline.follow">↓</button><button class="icon-button" id="export-timeline" data-i18n-aria-label="timeline.export">⇩</button></div>
+            </div>
+            <div class="timeline-columns"><span data-i18n="column.time">时间 / 来源</span><span data-i18n="column.operation">操作</span><span data-i18n="column.target">目标与记录</span><span data-i18n="column.state">状态</span></div>
+            <div id="timeline-list" class="timeline-list" tabindex="0" aria-label="Timeline records"><div id="timeline-rows"></div><div id="timeline-empty" class="empty-state"><div class="empty-orbit">◎</div><h2 data-i18n="timeline.empty">等待第一条轨迹</h2><p data-i18n="timeline.emptyHelp">开始监听后，让 Agent 执行一个小任务。</p></div></div>
+            <footer class="timeline-footer"><span id="visible-count"></span><span data-i18n="timeline.limit">本地视图保留最近 5,000 条 · 虚拟滚动</span></footer>
+          </div>
+        </section>
+        <section class="workspace hidden" data-panel="graph"><div class="workspace-heading"><div><p class="eyebrow">INTENTION MEETS EVIDENCE.</p><h1 data-i18n="nav.graph">履约图</h1><p class="subhead" data-i18n="graph.subtitle">从当前断言查看意图。缺少真实系统事件时，履约保持“未观测”。</p></div></div><div class="graph-frame"><canvas id="graph-canvas" aria-label="Assertion graph"></canvas><p class="canvas-overlay" id="graph-empty" data-i18n="graph.empty">有断言后，这里会点亮。</p></div></section>
+        <section class="workspace hidden" data-panel="replay"><div class="workspace-heading"><div><p class="eyebrow">ASK THE TRACE.</p><h1 data-i18n="nav.replay">查询</h1><p class="subhead" data-i18n="query.subtitle">输入完整路径，查看断言与已有证据。</p></div></div><form class="query-card" id="query-form"><label for="query-input" data-i18n="query.label">文件路径</label><div class="query-row"><input id="query-input" placeholder="C:\project\config.yaml" required /><button class="primary-button" id="run-query" data-i18n="query.run">查询</button></div><p class="hint" data-i18n="query.hint">未连接系统采集时，“未观测”不代表 Agent 没有执行。</p><pre id="query-result"></pre></form></section>
+        <section class="workspace hidden" data-panel="about"><div class="workspace-heading"><div><p class="eyebrow">BUILT TO SEE, NOT TO INTERFERE.</p><h1 data-i18n="nav.about">关于与帮助</h1></div></div><article class="about-card"><div class="about-version">CausativeLens <span id="version-label">0.1.0</span><span class="text-badge">BETA</span></div><p data-i18n="about.architecture">一 daemon，两前端。GUI 通过 RPC 读取同一份证据，轨迹仅在本机处理。</p><p data-i18n="about.boundary">安装目录并不一定有日志。没有识别到轨迹时，请按模板提示导出到所选目录，或勾选检查软件用户日志。</p><p data-i18n="about.persistence">当前监听视图保存在 daemon 内存中。关闭 GUI 后读取器继续工作；退出 daemon 会清空视图。请及时导出。</p></article></section>
+      </main>
+      <footer class="app-footer"><span>CAUSATIVELENS</span><span data-i18n="footer.note">留住脚印，不改写旅程。</span><span id="footer-state">observe</span></footer>
     </div>
-    <div class="command-palette hidden" id="command-palette" role="dialog" aria-modal="true" data-i18n-aria-label="palette.label"><div class="palette-card"><input id="palette-input" data-i18n-placeholder="palette.placeholder" placeholder="输入命令…" autofocus /><div class="palette-items"><button data-action="sessions" data-i18n="palette.sessions">打开 Sessions</button><button data-action="timeline" data-i18n="palette.timeline">打开 Timeline</button><button data-action="graph" data-i18n="palette.graph">打开 Graph</button><button data-action="replay" data-i18n="palette.replay">打开 Replay / Query</button></div></div></div>
-    <script src="./i18n.js" type="module"></script>
-    <script src="./app.js" type="module"></script>
-  </body>
+  </div>
+  <div id="detail-overlay" class="detail-overlay hidden"><aside class="detail-drawer" role="dialog" aria-modal="true" aria-labelledby="detail-title"><div class="drawer-heading"><h2 id="detail-title" data-i18n="detail.title">轨迹详情</h2><button id="close-detail" class="icon-button" data-i18n-aria-label="close">×</button></div><p class="inline-note" data-i18n="detail.boundary">客户端轨迹不等于系统采集证据。</p><pre id="detail-content"></pre><button class="secondary-button" id="copy-detail" data-i18n="detail.copy">复制 JSON</button></aside></div>
+  <script src="./i18n.js" type="module"></script>
+  <script src="./app.js" type="module"></script>
+</body>
 </html>

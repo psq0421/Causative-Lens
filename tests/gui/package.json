@@ -1,0 +1,11 @@
+{
+  "name": "causativelens-gui-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test model.test.mjs",
+    "e2e": "node browser.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}
