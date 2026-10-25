@@ -1,6 +1,6 @@
 ﻿# Changelog
 
-## 0.1.1 Beta candidate (2026-10-25)
+## 0.1.1 Beta (2026-10-25)
 
 - Rebuilt the Fluent listening wizard and added 20 content-based runtime template choices.
 - Fixed real Timeline filters, search/details/follow/export, and persistent CLI shortcuts.
