@@ -267,6 +267,12 @@ pub fn save_config_to(config: &AssistantConfig, path: impl AsRef<Path>) -> Resul
     let body = serde_json::to_vec_pretty(&config)
         .map_err(|error| AssistError::SettingsIo(error.to_string()))?;
     fs::write(&temp, body).map_err(|error| AssistError::SettingsIo(error.to_string()))?;
+    // Windows rename does not replace an existing destination. The temp file
+    // is fully written before removing the old settings so repeated GUI saves
+    // work reliably on both Windows and Unix.
+    if path.exists() {
+        fs::remove_file(path).map_err(|error| AssistError::SettingsIo(error.to_string()))?;
+    }
     fs::rename(&temp, path).map_err(|error| AssistError::SettingsIo(error.to_string()))
 }
 
@@ -335,10 +341,7 @@ fn request_openai_compatible(
     });
     let mut headers = vec!["Content-Type: application/json".to_owned()];
     if let Some(key) = api_key.map(str::trim).filter(|value| !value.is_empty()) {
-        if key
-            .chars()
-            .any(|character| character == '\r' || character == '\n')
-        {
+        if key.chars().any(char::is_control) {
             return Err(AssistError::Request(
                 "API key contains a line break and was rejected".to_owned(),
             ));
@@ -378,10 +381,7 @@ fn request_anthropic(
         "anthropic-version: 2023-06-01".to_owned(),
     ];
     if let Some(key) = api_key.map(str::trim).filter(|value| !value.is_empty()) {
-        if key
-            .chars()
-            .any(|character| character == '\r' || character == '\n')
-        {
+        if key.chars().any(char::is_control) {
             return Err(AssistError::Request(
                 "API key contains a line break and was rejected".to_owned(),
             ));
@@ -521,7 +521,19 @@ fn parse_result(
 
 fn valid_endpoint(endpoint: &str) -> bool {
     let lower = endpoint.trim().to_ascii_lowercase();
-    (lower.starts_with("https://") || lower.starts_with("http://"))
+    let Some(authority) = lower
+        .strip_prefix("https://")
+        .or_else(|| lower.strip_prefix("http://"))
+    else {
+        return false;
+    };
+    let Some(host) = authority.split('/').next() else {
+        return false;
+    };
+    !host.is_empty()
+        && !host.starts_with(':')
+        && !host.ends_with(':')
+        && !host.chars().any(|character| character.is_whitespace())
         && !endpoint.chars().any(|character| character.is_control())
 }
 
@@ -614,19 +626,12 @@ fn redact_value(value: &mut Value, inside_path: bool) {
                 redact_value(child, inside_path);
             }
         }
-        Value::String(text) if inside_path && looks_like_path(text) => {
+        Value::String(text) if inside_path && !text.trim().is_empty() => {
             let hash = stable_hash(text);
             *text = format!("<path:{hash:016x}>");
         }
         _ => {}
     }
-}
-
-fn looks_like_path(value: &str) -> bool {
-    value.contains('\\')
-        || value.contains('/')
-        || value.starts_with("C:")
-        || value.starts_with("D:")
 }
 
 fn stable_hash(value: &str) -> u64 {
@@ -679,6 +684,30 @@ mod tests {
         assert!(prompt.contains("<path:"));
         assert!(!prompt.contains("private"));
         assert!(!prompt.contains("C:\\secret"));
+    }
+
+    #[test]
+    fn relative_targets_are_redacted_and_settings_can_be_saved_twice() {
+        let config = AssistantConfig::default();
+        let request = AssistantRequest {
+            query: "why".to_owned(),
+            chain: json!({"target":"config.yaml"}),
+            language: "en-US".to_owned(),
+        };
+        let prompt = build_prompt(&config, &request).expect("prompt");
+        assert!(prompt.contains("<path:"));
+
+        let directory =
+            std::env::temp_dir().join(format!("causativelens-assist-test-{}", std::process::id()));
+        let path = directory.join("settings.json");
+        let _ = fs::remove_dir_all(&directory);
+        save_config_to(&config, &path).expect("first save");
+        save_config_to(&config, &path).expect("second save replaces existing file");
+        assert_eq!(
+            load_config_from(&path).expect("load").max_tokens,
+            config.max_tokens
+        );
+        fs::remove_dir_all(directory).expect("cleanup");
     }
 
     #[test]
