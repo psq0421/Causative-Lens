@@ -1,5 +1,7 @@
 ﻿# G7 release gate
 
+Every version before `v1.0.0` is a beta/test release. A beta may be published as a GitHub prerelease with an explicitly labelled development package and an honest limitation report. The requirements below are the stable-release gate for `v1.0.0` and later.
+
 A formal release is allowed only when the following evidence is present:
 
 - x64 and ARM64 installers named `CausativeLens-setup-x64.exe` and `CausativeLens-setup-arm64.exe`;

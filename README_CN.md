@@ -40,7 +40,7 @@ v0.1.0 只做观测。干预与决策命令顺延到 v0.2.0；相关数据表保
 
 ## 发布安全
 
-没有 Azure Trusted Signing 凭据时，本机构建保留 `-dev` 后缀，正式 Release 会被阻断。正式发布需要 x64 与 ARM64 签名安装包、SBOM、确定性构建证据和安装器 E2E 矩阵，见[发布闸门](docs/release/g7-release-gate_CN.md)。
+`v1.0.0` 之前的所有版本都是 beta 测试版。`v0.1.0` prerelease 使用明确标注的 x64 `-dev` 安装包；该包未签名，ARM64 暂缓。稳定版需要 x64 与 ARM64 签名安装包、SBOM、确定性构建证据和安装器 E2E 矩阵，见[发布闸门](docs/release/g7-release-gate_CN.md)。
 
 ## 贡献
 
