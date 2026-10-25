@@ -2,9 +2,9 @@
 
 > **A small lantern for the moments when software stops being obvious.**
 
-CausativeLens v0.1.0 is an observe-only causal observability tool for Windows. One `clens-daemon` owns the engine state; `clens.exe` and `clens-gui.exe` are two frontends over `causativelens-rpc`. The system records ETW metadata and structured agent traces, aligns assertions with observed events, and keeps the evidence replayable.
+CausativeLens v0.1.1 Beta is a read-only agent trace observer for Windows. Choose your agent, pick a folder, review detection, and start listening. One `clens-daemon` owns the data; `clens.exe` and `clens-gui.exe` communicate through `causativelens-rpc`.
 
-> **Current Beta limitation (2026-10-25):** the description above is the intended architecture. `run/attach` currently return `offline`; automatic vendor trace ingestion and the complete resident capture/persistence pipeline are not connected. See the [17-product integration tutorial and verified status](docs/guide/runtime-integration.md) before attempting live monitoring.
+> **Current Beta limitation (2026-10-25):** the GUI now tails supported local traces, with 20 template choices covering the requested 17 products, both WorkBuddy channels, DeepSeek and Others. These are content-based integrations, not certification of every vendor version. The complete ETW/persistence pipeline is still unconnected; agent reports are labelled separately from kernel evidence. `run/attach` remain offline. Start with [your first observation](docs/guide/monitoring-start.md).
 
 ## Languages
 
@@ -20,7 +20,7 @@ Language switch: [简体中文](README_CN.md) · [繁體中文](README_TW.md) ·
 ## Start here
 
 - [Quick start](docs/quick-start.md) · [快速入门](docs/快速入门.md) · [快速入門](docs/快速入門.md)
-- [17-product integration tutorial and current limitations](docs/guide/runtime-integration.md)
+- [v0.1.1 listening guide](docs/guide/monitoring-start.md) · [vendor trace preparation](docs/guide/runtime-integration.md)
 - [Documentation index](docs/README.md)
 - [Architecture and contracts](docs/architecture/README.md)
 - [Release notes](docs/release/CHANGELOG.md)
@@ -31,8 +31,8 @@ Language switch: [简体中文](README_CN.md) · [繁體中文](README_TW.md) ·
 cargo fmt --all -- --check
 cargo test --workspace --offline
 cargo clippy --workspace --all-targets --offline -- -D warnings
-powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.1.0
-powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.0
+powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.1.1
+powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.1
 ```
 
 The installer is per-user and puts GUI, CLI, daemon, and capture in one directory. Only `clens-capture.exe` requests UAC. The GUI is the default desktop entry point and `.cllens` files open in it.

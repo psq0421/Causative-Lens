@@ -20,3 +20,31 @@ jobs:
         run: ./scripts/dependency_audit.ps1
       - shell: pwsh
         run: ./scripts/guid_self_check.ps1
+
+  gui:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/gui/package-lock.json
+      - run: cargo check -p clens-gui --features tauri-shell
+      - run: cargo build -p clens-daemon
+      - run: npm ci --prefix tests/gui --ignore-scripts --no-audit --no-fund
+      - run: node tests/gui/node_modules/playwright/cli.js install chromium
+      - run: node --test tests/gui/model.test.mjs
+      - run: node tests/gui/browser.cjs
+      - shell: pwsh
+        run: ./scripts/measure-monitor-coverage.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gui-and-coverage-evidence
+          path: |
+            dist/gui-v0.1.1/
+            dist/coverage/**/summary.json

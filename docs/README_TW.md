@@ -6,6 +6,7 @@
 
 ## 指南
 
+- [v0.1.1 初次監聽](guide/monitoring-start_TW.md)
 - [快速入門](快速入門.md) · [Quick start](quick-start.md) · [简体中文](快速入门.md)
 - [17 款產品接入教程與目前限制（简体中文）](guide/runtime-integration_CN.md) · [English](guide/runtime-integration.md)
 - [貢獻指南](guide/contributing_TW.md) · [Contributing](guide/contributing.md) · [贡献指南](guide/contributing_CN.md)

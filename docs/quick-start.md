@@ -1,5 +1,7 @@
 ﻿# Quick start
 
+For the working v0.1.1 flow, see [your first observation](guide/monitoring-start.md): software → folder → probe → listen → filter/details/export. The legacy interface plans below describe v0.1.0.
+
 > **A session is a letter from a running program to your future self. CausativeLens keeps the envelope, the timestamp, and the fingerprints.**
 
 This guide introduces the intended v0.1.0 observe-only workflow on Windows.

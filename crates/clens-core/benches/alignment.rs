@@ -41,16 +41,16 @@ fn main() {
     for _ in 0..iterations {
         for _ in 0..50 {
             black_box(align_candidate(
-                TimedAssertion {
+                black_box(TimedAssertion {
                     assertion: &a,
                     center_ts_ms: 1000,
                     window_end_ms: 2000,
-                },
-                &e,
-                0,
-                1.0,
-                1.0,
-                AlignmentProfile::default(),
+                }),
+                black_box(&e),
+                black_box(0),
+                black_box(1.0),
+                black_box(1.0),
+                black_box(AlignmentProfile::default()),
             ));
         }
     }

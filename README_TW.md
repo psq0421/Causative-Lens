@@ -1,12 +1,14 @@
 # CausativeLens
 
+目前 v0.1.1 已提供[三步監聽精靈](docs/guide/monitoring-start_TW.md)、20 項範本、Timeline 真實篩選與 CLI 捷徑修復。即時 ETW/完整持久化尚未接通；用戶端報告不等於系統證據。
+
 > **給那些「軟體為什麼會這樣」的時刻，點一盞小燈。**
 
-CausativeLens v0.1.0 是 Windows 上的唯讀因果觀測工具。一個 `clens-daemon` 持有引擎狀態，`clens.exe` 與 `clens-gui.exe` 透過 `causativelens-rpc` 作為兩個前端工作。系統記錄 ETW 中繼資料與結構化 Agent 軌跡，把斷言與真實事件對齊，並保留可回放的證據。
+CausativeLens v0.1.1 Beta 是 Windows 上的唯讀 Agent 軌跡觀測工具。一個 `clens-daemon` 持有資料，`clens.exe` 與 `clens-gui.exe` 透過 `causativelens-rpc` 作為兩個前端工作。
 
 ## 語言
 
-> **目前 Beta 限制（2026-10-25）：** `run/attach` 目前回傳 `offline`，廠商軌跡自動接入及完整擷取/持久化鏈路尚未接通。請先閱讀 [17 款產品接入教程（简体中文）](docs/guide/runtime-integration_CN.md)或 [English](docs/guide/runtime-integration.md)。
+> **目前 Beta 限制（2026-10-25）：** GUI 可讀取受支援的本機軌跡，但 `run/attach` 仍回傳 `offline`，完整 ETW 擷取/持久化尚未接通。請先閱讀[初次監聽](docs/guide/monitoring-start_TW.md)。
 
 產品支援 **繁體中文**、**简体中文** 與 **English (US)**。
 

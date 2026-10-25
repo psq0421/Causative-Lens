@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('x64','arm64')][string]$Arch = 'x64',
-    [string]$Version = '0.1.0',
+    [string]$Version = '0.1.1',
     [string]$OutputDir,
     [switch]$SkipBuild
 )

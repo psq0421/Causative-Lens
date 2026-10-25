@@ -3,7 +3,7 @@
 on:
   workflow_dispatch:
   push:
-    tags: ['v0.1.0']
+    tags: ['v0.1.*']
 
 permissions:
   contents: read
@@ -20,17 +20,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 1.82.0
           targets: x86_64-pc-windows-msvc
       - name: Install NSIS
         shell: pwsh
         run: choco install nsis --no-progress --yes
       - name: Build, sign and exercise x64 release
         shell: pwsh
-        run: ./installer/build-release.ps1 -Arch x64 -Version 0.1.0
+        run: ./installer/build-release.ps1 -Arch x64 -Version 0.1.1
       - name: Generate SBOM
         shell: pwsh
-        run: ./installer/generate-sbom.ps1 -Version 0.1.0
+        run: ./installer/generate-sbom.ps1 -Version 0.1.1
       - name: Upload release evidence
         uses: actions/upload-artifact@v4
         with:

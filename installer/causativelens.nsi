@@ -1,4 +1,4 @@
-﻿; CausativeLens v0.1.0 G7 per-user installer.
+﻿; CausativeLens v0.1.1 Beta per-user installer.
 ; This script uses HKCU only. It installs one GUI/CLI payload and keeps
 ; clens-capture.exe as the only requireAdministrator binary.
 Unicode true
@@ -26,7 +26,7 @@ ${Using:StrFunc} UnStrStr
 !insertmacro VersionCompare
 
 !ifndef PRODUCT_VERSION
-  !define PRODUCT_VERSION "0.1.0"
+  !define PRODUCT_VERSION "0.1.1"
 !endif
 !ifndef ARCH
   !define ARCH "x64"

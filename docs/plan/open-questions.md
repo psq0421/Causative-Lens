@@ -1,24 +1,39 @@
-﻿# 开放问题、冲突与默认建议
+﻿# 开放问题、冲突与默认建议
+
 
 Language navigation: [English plan index](README.en-US.md) · [简体中文计划](README_CN.md) · [繁體中文计划](README_TW.md)。
 
 > **2026-10-25 教程核查：** 先前 README/快速入门中的“完整实时监测”表述与当前实现不符；`run/attach` 返回 `offline`、运行时全部为未验证 Tier3、RPC 会话仅内存，真实 capture/tail/持久化常驻接线尚缺。默认按实际测试证据标注能力边界，不降低原任务卡出口标准，也不把人工事件冒充采集成功。与 OQ-026、028、031、034、035、037 关联；逐项现状与复现方法见[接入教程](../guide/runtime-integration_CN.md)。本次只补文档与协议验证示例，不改变发布物或宣布闸门通过。
 
-| 编号 | 来源/冲突 | 影响 | 默认建议 |
-|---|---|---|---|
-| OQ-001 | 蓝图写 M0–M5/v0.x；本请求要求 M0–M7/v0.1.0 | 版本与闸门 | 采用本请求：G0–G7同一 v0.1.0列车；蓝图表18判据改名引用 |
-| OQ-002 | 蓝图第4.3称 CLI 优先、GUI后置；本请求要求 v0.1.0 GUI | 交付顺序 | GUI在G5实现，底层仍共享 daemon；CLI/GUI是同workspace前端crate |
-| OQ-003 | 蓝图把特权主进程描述为 `clens`；R4要求仅 capture UAC | 权限模型 | daemon/CLI/GUI标准用户，只有 `clens-capture` requireAdministrator |
-| OQ-004 | 蓝图安装包目标<15MB；R7要求<25MB | 性能合同 | v0.1.0采用<25MB硬门禁，旧指标作为优化目标记录 |
-| OQ-005 | 蓝图未规定单一 Release 产物；R1规定仅两个 exe | 发布 | Release仅 `CausativeLens-setup-x64.exe` 与 `...-arm64.exe`，zip仅CI |
-| OQ-006 | 蓝图保留 CausativeLens 大小写路径；用户要求 `%LOCALAPPDATA%\causativelens` | 兼容 | 新安装只用小写目录；迁移旧目录列入 v0.2.0兼容任务 |
-| OQ-007 | 命名是否连 crate 一并改名 | 生态与工作量 | v0.1.0保留 `clens-*`；彻底改名需单独 ADR |
-| OQ-008 | G 闸门周期是否压缩 | 计划可信度 | 默认按表中 21 周单人全职+并行 CI；若单人节奏不足，优先保留出口判据而延长周期 |
-| OQ-009 | 单人节奏假设是否成立 | 资源风险 | 默认按一名主工程师、Codex辅助、可用 x64/ARM64 CI；若无ARM实机，ARM冒烟不阻塞但必须有runner证据 |
-| OQ-010 | 干预层延后后的文档口径 | 用户预期 | 所有 v0.1.0文档标明 observe-only；schema保留表但无写路径；第12.4/19/21仅引用为v0.2.0输入 |
-| OQ-011 | WebView2离线安装包是否随发版 | 包体与网络 | 默认在线 Evergreen+离线bootstrapper引导，不把Runtime打进主安装包 |
-| OQ-012 | Azure Trusted Signing账号/区域可用性 | 发布阻断 | 默认无凭据则阻断G7 Release，不发布未签名正式包 |
-| OQ-013 | 
+| 编号 | 来源/冲突 | 影响 | 默认建议 |
+
+|---|---|---|---|
+
+| OQ-001 | 蓝图写 M0–M5/v0.x；本请求要求 M0–M7/v0.1.0 | 版本与闸门 | 采用本请求：G0–G7同一 v0.1.0列车；蓝图表18判据改名引用 |
+
+| OQ-002 | 蓝图第4.3称 CLI 优先、GUI后置；本请求要求 v0.1.0 GUI | 交付顺序 | GUI在G5实现，底层仍共享 daemon；CLI/GUI是同workspace前端crate |
+
+| OQ-003 | 蓝图把特权主进程描述为 `clens`；R4要求仅 capture UAC | 权限模型 | daemon/CLI/GUI标准用户，只有 `clens-capture` requireAdministrator |
+
+| OQ-004 | 蓝图安装包目标<15MB；R7要求<25MB | 性能合同 | v0.1.0采用<25MB硬门禁，旧指标作为优化目标记录 |
+
+| OQ-005 | 蓝图未规定单一 Release 产物；R1规定仅两个 exe | 发布 | Release仅 `CausativeLens-setup-x64.exe` 与 `...-arm64.exe`，zip仅CI |
+
+| OQ-006 | 蓝图保留 CausativeLens 大小写路径；用户要求 `%LOCALAPPDATA%\causativelens` | 兼容 | 新安装只用小写目录；迁移旧目录列入 v0.2.0兼容任务 |
+
+| OQ-007 | 命名是否连 crate 一并改名 | 生态与工作量 | v0.1.0保留 `clens-*`；彻底改名需单独 ADR |
+
+| OQ-008 | G 闸门周期是否压缩 | 计划可信度 | 默认按表中 21 周单人全职+并行 CI；若单人节奏不足，优先保留出口判据而延长周期 |
+
+| OQ-009 | 单人节奏假设是否成立 | 资源风险 | 默认按一名主工程师、Codex辅助、可用 x64/ARM64 CI；若无ARM实机，ARM冒烟不阻塞但必须有runner证据 |
+
+| OQ-010 | 干预层延后后的文档口径 | 用户预期 | 所有 v0.1.0文档标明 observe-only；schema保留表但无写路径；第12.4/19/21仅引用为v0.2.0输入 |
+
+| OQ-011 | WebView2离线安装包是否随发版 | 包体与网络 | 默认在线 Evergreen+离线bootstrapper引导，不把Runtime打进主安装包 |
+
+| OQ-012 | Azure Trusted Signing账号/区域可用性 | 发布阻断 | 默认无凭据则阻断G7 Release，不发布未签名正式包 |
+
+| OQ-013 |
 | OQ-013 | 提取到的 DOCX 目录显示第1–18章，用户要求按21章通读 | 章节编号与蓝图版本可能不一致 | 以正文已有章节和用户点名的第19/21章范围作为输入；待人类提供缺失章节原文时补充交叉引用，不改变 v0.1.0 闸门判据 |
 | OQ-014 | 新要求称 v0.x 纯 CLI、v1 才有 GUI；已批准方案要求 v0.1.0 G6 GUI | 版本范围冲突 | 默认保留已批准的 v0.1.0 GUI；“CLI 优先”解释为核心路径和命令语义优先，不删除 G6 |
 | OQ-015 | 新要求包体 `<15MB`、RSS `<120MB`；R7 已批准 `<25MB`、`<150MB` | 性能红线冲突 | 默认采用 R7 作为 v0.1.0 硬门；更严格数字作为 stretch target，需人类改红线后升级 |
@@ -33,10 +48,34 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 | OQ-023 | capture 管理员控制面如何把 spool 写权限安全下放给标准用户，以及 runas 拒绝如何回传 | ACL 过宽会扩大权限面，过窄会造成静默写失败 | 默认使用专用 spool 子目录 ACL + CL-1001 错误协议，不授予安装目录或控制管道写权限 |
 | OQ-024 | FileObject 28 分片、262144 上限、TTL/LRU 的具体淘汰顺序尚未接线 | 过早淘汰会使 FileRead/FileWrite 无法归因，永不淘汰会造成内存增长 | 默认先实现容量/TTL 双阈值和可见 eviction 指标，再进行性能调参 |
 | OQ-025 | ring 80% 扩批、95% 丢弃低价值 FileRead 的运行时策略尚未实现 | 没有固定策略就无法解释 buffer loss 与 Unobserved 的关系 | 默认丢弃只允许发生在明确的低价值类别，并写入 drop 计数和 manifest；不得动态静默丢弃 |
-| OQ-026 | 第 8.1 要求 `ReadDirectoryChangesW` 目录通知，但日志轮换、重命名和 overlapped 取消的生命周期尚未由 daemon 统一管理 | 可能在轮换竞态下漏唤醒或阻塞关闭 | 默认先用同步目录通知 + 文件 offset/截断检测；G5 Windows runner 覆盖轮换和取消后再切 overlapped || OQ-027 | 第 8.2.2 指定 Qwen ONNX int4，但模型版本、许可证、运行时 DLL 与 量化校验值未冻结 | 直接接入会造成不可复现构建或误报兼容 | 默认 v0.1.0 只保留 feature-gated SPI 和 unavailable 结果；模型包、哈希、许可证在 v0.2.0 单独拍板 || OQ-028 | 用户要求 18 个运行时近三个月兼容，但当前没有每个运行时的真实 JSONL 样本和版本探针 | Tier3 fallback 不能证明字段级兼容 | 默认每个运行时至少收集一个带版本和采样日期的 fixture；缺样本时 doctor 明确标 `tier3-jsonl-unverified`，不做强制设限 || OQ-029 | `HarnessEvent.raw_json` 新增字段会改变跨模块序列化大小 | 旧 `.cllens` 回放可能缺少原始记录 | 默认使用 serde default 兼容缺失字段；schema_v 仍只在破坏性变更时升 major || OQ-030 | 蓝图要求 QueryDosDevice、8.3、符号链接和设备路径解析，但这些 API 需要 Windows capture 权限与缓存生命周期 | 在 core 中直接调用会破坏纯计算和离线回放 | 默认由 capture 生成 PathInterner snapshot，core 只接受规范化字符串表；G3 以 Windows golden fixture 验收 || OQ-031 | 断言主体 pid 依赖 run/attach 的 Harness tool→子进程锚定，当前 RPC 事件未携带完整进程上下文 | 未知主体时 process 分数无法证明为真实直接归属 | 默认保留 unknown-context fallback，并在 `record_assertion_subject_pid` 接线后才宣称进程维度准确 || OQ-032 | daemon 当前兼容循环仍逐断言扫描，蓝图目标是 `(pid, kind)` 倒排索引和单事件 <3µs | 过早引入共享索引可能破坏单写者和回放确定性 | 默认先用纯 `AlignmentEngine` 固化 golden/fuzz，再在 G3 bench PR 中引入事件循环内倒排索引 || OQ-033 | 蓝图要求 ratatui 完整交互 timeline，但当前工作区未冻结 ratatui 依赖且离线缓存没有该 crate | 直接引入会改变锁文件并阻塞离线构建 | 默认先冻结 renderer/JSON 契约与 ANSI 降级；在 G4 发布门接入 ratatui 后再启用交互循环 || OQ-034 | `query.why` 需要从 `.cllens`/SQLite 查询，而当前 daemon 仅有内存 session | 直接宣称离线查询完成会误导发布验收 | 默认 v0.1 先以 daemon RPC 内存索引背书；G4/G7 增加 `.cllens` 打开与索引回归，缺失时报告明确错误 || OQ-035 | 蓝图要求 `CreateFileMappingW(SEC_COMMIT)` + 命名事件 + Release/Acquire 进度，但当前工作区只有纯 Rust ring 协议契约 | 静态协议测试不能证明跨进程可见性或崩溃恢复 | 默认先冻结 header/95% spool/CRC 契约；G1 Windows runner 接入真实 mapping、通知和恢复测试后才算通过 || OQ-036 | 控制管道要求当前用户 SID ACL；owner-only SDDL 可表达创建者 owner，但尚未在 clean VM 验证 UAC/跨用户拒绝 | ACL 误配会扩大控制面或阻断 GUI/CLI | 默认使用 `D:P(A;;GA;;;OW)`，发布前用真实 SID/跨用户测试确认；失败则改为显式 token SID ACL || OQ-037 | `CL-2001` 三次心跳失联后的自动落盘/停会话尚未由 capture↔daemon runtime 接线 | 仅有计时契约无法证明故障收尾 | 默认先输出健康度和 failure code；G5 接线后要求 spool flush、会话关闭和 CLI/GUI 可见错误的 E2E 证据 || OQ-038 | 本机没有 Azure Trusted Signing 凭据，无法生成合法正式签名 | 不能用自签名证书冒充高等级发布签名 | 默认只生成 `-dev` 包并让正式 gate 阻断；CI 注入 Trusted Signing DLib/metadata 后再发版 |
+
+| OQ-026 | 第 8.1 要求 `ReadDirectoryChangesW` 目录通知，但日志轮换、重命名和 overlapped 取消的生命周期尚未由 daemon 统一管理 | 可能在轮换竞态下漏唤醒或阻塞关闭 | 默认先用同步目录通知 + 文件 offset/截断检测；G5 Windows runner 覆盖轮换和取消后再切 overlapped |
+| OQ-027 | 第 8.2.2 指定 Qwen ONNX int4，但模型版本、许可证、运行时 DLL 与 量化校验值未冻结 | 直接接入会造成不可复现构建或误报兼容 | 默认 v0.1.0 只保留 feature-gated SPI 和 unavailable 结果；模型包、哈希、许可证在 v0.2.0 单独拍板 |
+| OQ-028 | 用户要求 18 个运行时近三个月兼容，但当前没有每个运行时的真实 JSONL 样本和版本探针 | Tier3 fallback 不能证明字段级兼容 | 默认每个运行时至少收集一个带版本和采样日期的 fixture；缺样本时 doctor 明确标 `tier3-jsonl-unverified`，不做强制设限 |
+| OQ-029 | `HarnessEvent.raw_json` 新增字段会改变跨模块序列化大小 | 旧 `.cllens` 回放可能缺少原始记录 | 默认使用 serde default 兼容缺失字段；schema_v 仍只在破坏性变更时升 major |
+
+| OQ-030 | 蓝图要求 QueryDosDevice、8.3、符号链接和设备路径解析，但这些 API 需要 Windows capture 权限与缓存生命周期 | 在 core 中直接调用会破坏纯计算和离线回放 | 默认由 capture 生成 PathInterner snapshot，core 只接受规范化字符串表；G3 以 Windows golden fixture 验收 |
+| OQ-031 | 断言主体 pid 依赖 run/attach 的 Harness tool→子进程锚定，当前 RPC 事件未携带完整进程上下文 | 未知主体时 process 分数无法证明为真实直接归属 | 默认保留 unknown-context fallback，并在 `record_assertion_subject_pid` 接线后才宣称进程维度准确 |
+| OQ-032 | daemon 当前兼容循环仍逐断言扫描，蓝图目标是 `(pid, kind)` 倒排索引和单事件 <3µs | 过早引入共享索引可能破坏单写者和回放确定性 | 默认先用纯 `AlignmentEngine` 固化 golden/fuzz，再在 G3 bench PR 中引入事件循环内倒排索引 |
+| OQ-033 | 蓝图要求 ratatui 完整交互 timeline，但当前工作区未冻结 ratatui 依赖且离线缓存没有该 crate | 直接引入会改变锁文件并阻塞离线构建 | 默认先冻结 renderer/JSON 契约与 ANSI 降级；在 G4 发布门接入 ratatui 后再启用交互循环 |
+| OQ-034 | `query.why` 需要从 `.cllens`/SQLite 查询，而当前 daemon 仅有内存 session | 直接宣称离线查询完成会误导发布验收 | 默认 v0.1 先以 daemon RPC 内存索引背书；G4/G7 增加 `.cllens` 打开与索引回归，缺失时报告明确错误 |
+| OQ-035 | 蓝图要求 `CreateFileMappingW(SEC_COMMIT)` + 命名事件 + Release/Acquire 进度，但当前工作区只有纯 Rust ring 协议契约 | 静态协议测试不能证明跨进程可见性或崩溃恢复 | 默认先冻结 header/95% spool/CRC 契约；G1 Windows runner 接入真实 mapping、通知和恢复测试后才算通过 |
+| OQ-036 | 控制管道要求当前用户 SID ACL；owner-only SDDL 可表达创建者 owner，但尚未在 clean VM 验证 UAC/跨用户拒绝 | ACL 误配会扩大控制面或阻断 GUI/CLI | 默认使用 `D:P(A;;GA;;;OW)`，发布前用真实 SID/跨用户测试确认；失败则改为显式 token SID ACL |
+| OQ-037 | `CL-2001` 三次心跳失联后的自动落盘/停会话尚未由 capture↔daemon runtime 接线 | 仅有计时契约无法证明故障收尾 | 默认先输出健康度和 failure code；G5 接线后要求 spool flush、会话关闭和 CLI/GUI 可见错误的 E2E 证据 |
+| OQ-038 | 本机没有 Azure Trusted Signing 凭据，无法生成合法正式签名 | 不能用自签名证书冒充高等级发布签名 | 默认只生成 `-dev` 包并让正式 gate 阻断；CI 注入 Trusted Signing DLib/metadata 后再发版 |
 | OQ-039 | 安装器默认目录与 `%LOCALAPPDATA%\causativelens` 会话根可能重合 | 卸载若递归删除根目录会误删会话 | 默认卸载只删已知安装文件；会话扩展名/目录仅在勾选或 `/CLEANUSERDATA` 时清理，锁定文件移入 `.trash/pending` |
 | OQ-040 | NSIS 安装器无法把含反斜杠的自定义路径直接写成 JSON 字符串 | `install-manifest.json` 会产生非法 JSON | 默认 manifest 只写产品/版本/架构/模式和 payload 文件清单，不写未转义绝对路径 |
 
 | OQ-039 | 新增三语要求会扩大 UI/安装器/文档维护面 | 文案漂移或 JSON 契约被误翻译 | 默认已决策：`en-US`、`zh-CN`、`zh-TW`；CLI/GUI/NSIS 各自本地化，JSON/RPC 保持英文稳定，并用架构测试锁住三语入口 |
 | OQ-040 | 旧 plan/spec/task-card 文件以中文编写，完全人工翻译会增加契约漂移风险 | 开源读者可能找不到对应语言的规范 | 默认已决策：保留原契约路径与编号，增加三语入口/索引和核心指南镜像；逐文件翻译按文档变更触发，英文镜像不得改写契约语义 |
 
+## v0.1.1 候选裁定（2026-10-25）
+
+| 编号 | 冲突或缺口 | 默认裁定 |
+|---|---|---|
+| OQ-0111-01 | 原报告把采集/持久化和运行时名字登记写成了完整接线；源码与实际能力不符 | 本补丁交付真实的本机轨迹读取与 GUI；界面/RPC 明确 `capture_connected=false`，不伪造系统事件，不回填 G1–G7 全绿；完整采集另卡补齐 |
+| OQ-0111-02 | “17 家自动适配”与某些产品只保存 SQLite/云端数据冲突 | 全量提供软件模板、候选目录和导出引导；按内容识别支持的记录，未知结构可见拒绝；空目录进入等待，不以选好目录当成功；不承诺未经实测的所有厂商版本 |
+| OQ-0111-03 | 用户要求 v0.1.1，旧规范禁止非发布卡修改版本 | 由 T0103 统一修改 crate/CLI/GUI/安装器为 0.1.1，workspace 无版本字段不新造字段；本轮其他卡未自行改版本 |
+| OQ-0111-04 | 缺少 Trusted Signing、干净 VM/重启、全量 GUI 性能和安全门禁证据 | 仅本地 x64 `-dev` 候选；不打正式 tag、不发布正式 Release。ARM64 依用户授权继续暂缓；没有用测试窗口出现时间替代冷启动测量 |
+| OQ-0111-05 | 旧 SBOM 仅列 workspace，旧安装器 E2E 把固定 sleep 当冷启动证据 | SBOM 包含目标平台传递依赖图；E2E 改为明确的 native-window smoke，保留性能预算未验证；测试拒绝覆盖已注册安装并恢复原快捷方式/PATH |
+| OQ-0111-06 | 新 Tauri dialog 依赖与旧 G7 Rust 1.82 固定 runner 可能不兼容 | 用现行 stable 执行实际 feature 构建；仅确认本机 1.99.1 通过，不承诺 1.82 MSRV；CI 不再钉死过旧工具链。原生对话框使用官方插件，不进入核心引擎依赖 |

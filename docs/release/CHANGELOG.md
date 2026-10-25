@@ -1,5 +1,13 @@
 ﻿# Changelog
 
+## 0.1.1 Beta candidate (2026-10-25)
+
+- Rebuilt the Fluent listening wizard and added 20 content-based runtime template choices.
+- Fixed real Timeline filters, search/details/follow/export, and persistent CLI shortcuts.
+- Added bounded native trace readers and daemon monitoring RPC; reports remain distinct from system evidence.
+- Added browser E2E, monitoring coverage measurement, Tauri build and safer installer E2E.
+- [Full bilingual notes and remaining release gates](v0.1.1.md).
+
 ## 0.1.0 Beta (2026-10-25)
 
 This is a test release. Every version before `v1.0.0` is published as beta software.

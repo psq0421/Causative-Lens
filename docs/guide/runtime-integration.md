@@ -1,5 +1,7 @@
 # Connecting 17 Agent / CLI products to CausativeLens
 
+v0.1.1 adds native-log normalization, folder listening and a GUI wizard. See [your first observation](monitoring-start.md). The v0.1.0 audit below is retained for provenance and vendor trace preparation.
+
 Language: [English (US)](runtime-integration.md) · [简体中文](runtime-integration_CN.md)
 
 Back to [documentation](../README.md) · [quick start](../quick-start.md)

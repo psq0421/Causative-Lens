@@ -2,9 +2,9 @@
 
 > **给那些“软件为什么会这样”的瞬间，点一盏小灯。**
 
-CausativeLens v0.1.0 是 Windows 上的只读因果观测工具。一个 `clens-daemon` 持有引擎状态，`clens.exe` 与 `clens-gui.exe` 通过 `causativelens-rpc` 作为两个前端工作。系统记录 ETW 元数据和结构化 Agent 轨迹，把断言与真实事件对齐，并保留可回放的证据。
+CausativeLens v0.1.1 Beta 是 Windows 上的只读 Agent 轨迹观测工具。选软件、选目录、检查并监听。一个 `clens-daemon` 持有数据，`clens.exe` 与 `clens-gui.exe` 通过 `causativelens-rpc` 工作。
 
-> **当前 Beta 限制（2026-10-25）：** 上述是目标架构。`run/attach` 目前返回 `offline`，厂商轨迹自动接入及完整的采集常驻/持久化链路尚未接通。实时监测前请先阅读[17 款产品接入教程与已验证状态](docs/guide/runtime-integration_CN.md)。
+> **当前 Beta 能力与边界（2026-10-25）：** GUI 已可持续读取支持的本机轨迹，提供 17 家产品、WorkBuddy 两渠道、DeepSeek 与 Others 共 20 个选择项，按内容识别，不代表所有厂商版本均实测。完整 ETW/持久化链路仍未接通，客户端报告与系统证据明确标源；`run/attach` 仍为离线占位。请从[第一次监听](docs/guide/monitoring-start_CN.md)开始。
 
 ## 语言
 
@@ -20,7 +20,7 @@ CausativeLens v0.1.0 是 Windows 上的只读因果观测工具。一个 `clens-
 ## 从这里开始
 
 - [快速入门](docs/快速入门.md) · [Quick start](docs/quick-start.md) · [快速入門](docs/快速入門.md)
-- [17 款产品接入教程与当前限制](docs/guide/runtime-integration_CN.md)
+- [v0.1.1 新手监听向导](docs/guide/monitoring-start_CN.md) · [厂商轨迹准备教程](docs/guide/runtime-integration_CN.md)
 - [文档目录](docs/README_CN.md)
 - [架构与契约](docs/architecture/README_CN.md)
 - [发布说明](docs/release/CHANGELOG_CN.md)
@@ -31,8 +31,8 @@ CausativeLens v0.1.0 是 Windows 上的只读因果观测工具。一个 `clens-
 cargo fmt --all -- --check
 cargo test --workspace --offline
 cargo clippy --workspace --all-targets --offline -- -D warnings
-powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.1.0
-powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.0
+powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.1.1
+powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.1
 ```
 
 安装器按当前用户安装 GUI、CLI、daemon 和 capture。只有 `clens-capture.exe` 请求 UAC；GUI 是桌面默认入口，`.cllens` 文件会关联到 GUI。

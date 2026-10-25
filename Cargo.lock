@@ -324,7 +324,7 @@ dependencies = [
 
 [[package]]
 name = "clens-arch-tests"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clens-capture",
  "clens-cli",
@@ -334,7 +334,7 @@ dependencies = [
 
 [[package]]
 name = "clens-capture"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clens-types",
  "serde_json",
@@ -342,7 +342,7 @@ dependencies = [
 
 [[package]]
 name = "clens-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clens-daemon-client",
  "clens-types",
@@ -352,7 +352,7 @@ dependencies = [
 
 [[package]]
 name = "clens-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clens-types",
  "serde",
@@ -361,7 +361,7 @@ dependencies = [
 
 [[package]]
 name = "clens-daemon"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clens-capture",
  "clens-core",
@@ -376,7 +376,7 @@ dependencies = [
 
 [[package]]
 name = "clens-daemon-client"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clens-types",
  "serde_json",
@@ -385,7 +385,7 @@ dependencies = [
 
 [[package]]
 name = "clens-gui"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clens-daemon-client",
  "clens-types",
@@ -398,7 +398,7 @@ dependencies = [
 
 [[package]]
 name = "clens-harnessd"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clens-types",
  "serde",
@@ -408,14 +408,14 @@ dependencies = [
 
 [[package]]
 name = "clens-storage"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clens-types",
 ]
 
 [[package]]
 name = "clens-types"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
