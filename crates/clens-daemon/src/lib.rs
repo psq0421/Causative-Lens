@@ -1,14 +1,17 @@
+mod monitoring;
 use clens_capture::{CaptureHealth, ClockAnchor};
 use clens_core::{
     align_candidate_at, event_path_score, is_constraint_conflict, semantic_score,
     watermark_value_ms, AlignmentMatch, AlignmentProfile, ProcessTree, TimedAssertion, Watermark,
 };
+use clens_harnessd::monitor::LiveMonitor;
 use clens_harnessd::{extract_rule_assertions, AssertionPool, TailHealth};
 use clens_storage::SpoolFrame;
 use clens_types::{
     HarnessEvent, HelloRequest, HelloResponse, Mode, RpcError, SessionTicket, SysEvent,
     DEV_VERSION, PRODUCT_NAME, RPC_MAX_MESSAGE_BYTES, RPC_METHOD_MAX_BYTES,
 };
+use monitoring::{category_of, target_of, TimelineBuffer, TimelineRow};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -43,6 +46,9 @@ pub enum ObservationError {
 
 #[derive(Debug)]
 pub struct ObservationSession {
+    monitor: Option<LiveMonitor>,
+    timeline: TimelineBuffer,
+    seen_harness: HashSet<(u64, u64)>,
     pub capture_health: CaptureHealth,
     pub harness_health: TailHealth,
     pub process_tree: ProcessTree,
@@ -64,6 +70,9 @@ pub struct ObservationSession {
 impl Default for ObservationSession {
     fn default() -> Self {
         Self {
+            monitor: None,
+            timeline: TimelineBuffer::default(),
+            seen_harness: HashSet::new(),
             capture_health: CaptureHealth::default(),
             harness_health: TailHealth::default(),
             process_tree: ProcessTree::default(),
@@ -86,12 +95,54 @@ impl Default for ObservationSession {
 
 impl ObservationSession {
     pub fn ingest_harness_event(&mut self, event: &HarnessEvent) -> Option<u64> {
+        if !self
+            .seen_harness
+            .insert((event.harness_log_id, event.line_no.max(event.step)))
+        {
+            return None;
+        }
+        if self.seen_harness.len() > 100_000 {
+            self.seen_harness.clear();
+        }
+        let kind = event
+            .tool
+            .as_ref()
+            .map_or_else(|| format!("{:?}", event.phase), |t| t.name.to_string());
+        self.timeline.push(TimelineRow {
+            seq: 0,
+            ts_utc_ms: event.ts_utc_ms,
+            category: category_of(event).into(),
+            source: "agent".into(),
+            kind,
+            target: target_of(event),
+            text: event.text.to_string(),
+            state: if event.phase == clens_types::Phase::ToolCall {
+                "reported"
+            } else {
+                "recorded"
+            }
+            .into(),
+        });
         let assertions = extract_rule_assertions(event, 0);
         if assertions.is_empty() {
             return None;
         }
         let mut first_id = None;
         for assertion in assertions {
+            let target = match &assertion.target {
+                clens_types::TargetPattern::Path(p) => p.to_string(),
+                other => format!("{other:?}"),
+            };
+            self.timeline.push(TimelineRow {
+                seq: 0,
+                ts_utc_ms: event.ts_utc_ms,
+                category: "assertions".into(),
+                source: "assertion".into(),
+                kind: format!("{:?}", assertion.op),
+                target,
+                text: assertion.raw_quote.to_string(),
+                state: "unobserved".into(),
+            });
             let id = self.assertion_pool.insert(assertion);
             if let Some(candidate) = self.assertion_pool.values().find(|value| value.id == id) {
                 if let clens_types::TargetPattern::Path(path) = &candidate.target {
@@ -133,6 +184,36 @@ impl ObservationSession {
             return Ok(());
         }
         self.capture_health.events_seen = self.capture_health.events_seen.saturating_add(1);
+        let kind = format!("{:?}", event.kind);
+        let timestamp = self
+            .clock_anchor
+            .map(|(anchor, frequency)| anchor.qpc_to_utc_ms(event.ts_qpc, frequency));
+        self.timeline.push(TimelineRow {
+            seq: 0,
+            ts_utc_ms: timestamp.unwrap_or_else(clens_harnessd::monitor::now_ms),
+            category: if kind.starts_with("File") {
+                "files"
+            } else if kind.starts_with("Net") {
+                "network"
+            } else {
+                "other"
+            }
+            .into(),
+            source: "system".into(),
+            kind,
+            target: self.event_target(event),
+            text: format!(
+                "pid={} seq={} time_basis={}",
+                event.pid,
+                event.seq,
+                if timestamp.is_some() {
+                    "anchored_qpc"
+                } else {
+                    "received"
+                }
+            ),
+            state: "observed".into(),
+        });
         self.events.insert(event.seq, event.clone());
         match (&event.kind, &event.payload) {
             (clens_types::SysKind::ProcStart, clens_types::EventPayload::Proc { ppid, .. }) => {
@@ -335,7 +416,7 @@ impl ObservationSession {
             "events_seen": self.capture_health.events_seen,
             "spool_gaps": self.capture_health.spool_gaps,
             "harness_quarantine": self.harness_health.quarantine_count,
-            "confidence": if self.capture_health.events_lost == 0 { 1.0 } else { 0.5 },
+            "confidence": if self.capture_health.events_seen == 0 { 0.0 } else if self.capture_health.events_lost == 0 { 1.0 } else { 0.5 },
             "note": note
         })
     }
@@ -367,6 +448,15 @@ impl DaemonState {
                 request.id,
                 RpcError::InvalidParams("control message exceeds protocol limits".to_owned()),
             );
+        }
+        for session in self.sessions.values_mut() {
+            session.pump_monitor();
+        }
+        if request.method.starts_with("monitor.") {
+            return match self.monitoring_rpc(&request.method, &request.params) {
+                Ok(result) => RpcResponse::ok(request.id, result),
+                Err(error) => RpcResponse::error(request.id, RpcError::InvalidParams(error)),
+            };
         }
         match request.method.as_str() {
             "hello" => {
@@ -676,7 +766,7 @@ pub fn run_named_pipe() -> std::io::Result<()> {
             CreateNamedPipeW(
                 wide.as_ptr(),
                 PIPE_ACCESS_DUPLEX,
-                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | 0x0000_0008,
                 1,
                 65_536,
                 65_536,
@@ -694,19 +784,23 @@ pub fn run_named_pipe() -> std::io::Result<()> {
             || unsafe { GetLastError() } == ERROR_PIPE_CONNECTED;
         if connected {
             let mut reader = BufReader::new(unsafe { File::from_raw_handle(handle) });
-            while let Some(line) = read_bounded_line(&mut reader, RPC_MAX_MESSAGE_BYTES)? {
+            while let Ok(Some(line)) = read_bounded_line(&mut reader, RPC_MAX_MESSAGE_BYTES) {
                 let response = match serde_json::from_slice::<RpcRequest>(&line) {
                     Ok(request) => serde_json::to_vec(&state.handle(request))
                         .map_err(|error| std::io::Error::other(error.to_string()))?,
-                    Err(error) => format!(
-                        r#"{{"id":0,"error":{{"code":"invalid_json","message":"{}"}}}}"#,
-                        error
-                    )
-                    .into_bytes(),
+                    Err(error) => serde_json::to_vec(
+                        &json!({"id":0,"error":{"code":"invalid_json","message":error.to_string()}}),
+                    )?,
                 };
-                reader.get_mut().write_all(&response)?;
-                reader.get_mut().write_all(b"\n")?;
-                reader.get_mut().flush()?;
+                if reader
+                    .get_mut()
+                    .write_all(&response)
+                    .and_then(|()| reader.get_mut().write_all(b"\n"))
+                    .and_then(|()| reader.get_mut().flush())
+                    .is_err()
+                {
+                    break;
+                }
             }
             let _ = unsafe { DisconnectNamedPipe(handle) };
         } else {

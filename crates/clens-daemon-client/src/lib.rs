@@ -42,13 +42,26 @@ impl RpcClient {
 
 #[cfg(windows)]
 fn round_trip(request: &[u8]) -> Result<Vec<u8>, ClientError> {
-    use std::io::{BufRead, BufReader, Write};
+    use std::io::{BufRead, BufReader, Read, Write};
 
-    let mut stream = std::fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(RPC_PIPE_NAME)
-        .map_err(|error| ClientError::Transport(error.to_string()))?;
+    // The daemon serializes requests. A concurrent GUI poll may briefly occupy
+    // its single pipe instance; retry only opening, never replay a sent mutation.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    let mut stream = loop {
+        match std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(RPC_PIPE_NAME)
+        {
+            Ok(stream) => break stream,
+            Err(error)
+                if error.raw_os_error() == Some(231) && std::time::Instant::now() < deadline =>
+            {
+                std::thread::sleep(std::time::Duration::from_millis(15));
+            }
+            Err(error) => return Err(ClientError::Transport(error.to_string())),
+        }
+    };
     stream
         .write_all(request)
         .map_err(|error| ClientError::Transport(error.to_string()))?;
@@ -58,8 +71,13 @@ fn round_trip(request: &[u8]) -> Result<Vec<u8>, ClientError> {
     let mut reader = BufReader::new(stream);
     let mut response = Vec::new();
     reader
+        .by_ref()
+        .take(clens_types::RPC_MAX_MESSAGE_BYTES as u64 + 1)
         .read_until(b'\n', &mut response)
         .map_err(|error| ClientError::Transport(error.to_string()))?;
+    if response.len() > clens_types::RPC_MAX_MESSAGE_BYTES {
+        return Err(ClientError::InvalidResponse("response_too_large".into()));
+    }
     Ok(response)
 }
 
