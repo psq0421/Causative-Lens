@@ -15,6 +15,7 @@ This directory turns `CL-BLUEPRINT-001` chapters M0–M7 into one G0–G7 releas
 
 - [Chinese plan index](README.md) · [简体中文 mirror](README_CN.md) · [繁體中文 mirror](README_TW.md)
 - [Implementation plan](implementation-plan.md)
+- [v0.1.2 evidence-grade capture proposal](v0.1.2.en-US.md) · [简体中文](v0.1.2.md)
 - [Installer specification](installer-spec.md)
 - [GUI UX specification](gui-ux-spec.md)
 - [Test plan](test-plan.md)

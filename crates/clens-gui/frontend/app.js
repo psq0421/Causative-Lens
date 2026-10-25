@@ -7,6 +7,7 @@ let templates = [], selected = '', step = 0, workspace = 'sessions', probe = nul
 let sessionId = null, rows = [], cursor = 0, filter = 'all', follow = true;
 let connected = false, monitorStatus = null, timer = 0, epoch = 0, detail = null, lastFocus = null;
 let bannerKey = null, lastUpdated = null;
+let assistantConfig = null, assistantApiKey = '', lastQueryResult = null;
 const language = () => document.documentElement.lang;
 const nameOf = id => templates.find(item => item.id === id)?.name || id;
 function setTheme(theme) {
@@ -327,8 +328,99 @@ $('#query-form').addEventListener('submit', event => {
   busy($('#run-query'), async () => {
     if (!sessionId) throw new Error('session_required');
     const result = await rpc('query.why', { session_id: sessionId, path: $('#query-input').value.trim() });
+    lastQueryResult = result;
     $('#query-result').textContent = JSON.stringify(result.chain, null, 2);
+    $('#assistant-result').classList.add('hidden');
+    if (assistantConfig?.enabled && assistantConfig.auto_analyze) await runAssistant(result);
   });
+});
+async function runAssistant(result = lastQueryResult) {
+  if (!sessionId) throw new Error('session_required');
+  if (!assistantConfig?.enabled) {
+    $('#assistant-result').classList.remove('hidden');
+    $('#assistant-result').textContent = t('settings.disabled');
+    return;
+  }
+  const response = await rpc('assist.analyze', {
+    config: assistantConfig,
+    api_key: assistantApiKey,
+    request: {
+      query: $('#query-input').value.trim(),
+      chain: result?.chain || {},
+      language: language(),
+    },
+  });
+  $('#assistant-result').classList.remove('hidden');
+  $('#assistant-result').textContent = JSON.stringify(response, null, 2);
+}
+$('#assist-query').addEventListener('click', () => busy($('#assist-query'), async () => {
+  if (!lastQueryResult) {
+    if (!sessionId) throw new Error('session_required');
+    lastQueryResult = await rpc('query.why', { session_id: sessionId, path: $('#query-input').value.trim() });
+    $('#query-result').textContent = JSON.stringify(lastQueryResult.chain, null, 2);
+  }
+  await runAssistant();
+}));
+
+function assistantFormConfig() {
+  return {
+    enabled: $('#assistant-enabled').checked,
+    provider: $('#assistant-provider').value,
+    endpoint: $('#assistant-endpoint').value.trim(),
+    model: $('#assistant-model').value.trim(),
+    max_tokens: Number($('#assistant-max-tokens').value || 1200),
+    temperature: Number($('#assistant-temperature').value || 0.2),
+    timeout_secs: Number($('#assistant-timeout').value || 45),
+    redact_paths: $('#assistant-redact').checked,
+    include_raw_quotes: $('#assistant-quotes').checked,
+    auto_analyze: $('#assistant-auto').checked,
+    timeline_refresh_ms: Number($('#settings-refresh').value || 500),
+    timeline_retention: Number($('#settings-retention').value || 5000),
+    default_theme: document.documentElement.dataset.theme || 'system',
+    default_language: language(),
+  };
+}
+function fillAssistantForm(config) {
+  assistantConfig = { ...config };
+  $('#assistant-enabled').checked = Boolean(config.enabled);
+  $('#assistant-provider').value = config.provider || 'jev';
+  $('#assistant-endpoint').value = config.endpoint || '';
+  $('#assistant-model').value = config.model || '';
+  $('#assistant-max-tokens').value = config.max_tokens || 1200;
+  $('#assistant-temperature').value = config.temperature ?? 0.2;
+  $('#assistant-timeout').value = config.timeout_secs || 45;
+  $('#assistant-redact').checked = config.redact_paths !== false;
+  $('#assistant-quotes').checked = Boolean(config.include_raw_quotes);
+  $('#assistant-auto').checked = Boolean(config.auto_analyze);
+  $('#settings-refresh').value = config.timeline_refresh_ms || 500;
+  $('#settings-retention').value = config.timeline_retention || 5000;
+  if (config.default_theme && config.default_theme !== 'system') setTheme(config.default_theme);
+}
+async function loadAssistantSettings() {
+  try {
+    fillAssistantForm(await invoke('assistant_settings_get'));
+  } catch (error) {
+    if (!String(error?.message || error).includes('browser_preview')) report(error);
+    fillAssistantForm({ enabled: false, provider: 'jev', endpoint: '', model: '', max_tokens: 1200, temperature: 0.2, timeout_secs: 45, redact_paths: true, include_raw_quotes: false, auto_analyze: false });
+  }
+}
+$('#settings-form').addEventListener('submit', event => {
+  event.preventDefault();
+  busy($('#settings-save'), async () => {
+    const config = assistantFormConfig();
+    assistantApiKey = $('#assistant-api-key').value.trim();
+    assistantConfig = await invoke('assistant_settings_save', { config });
+    $('#settings-status').textContent = t('settings.saved');
+    fillAssistantForm(assistantConfig);
+  });
+});
+$('#settings-test').addEventListener('click', () => {
+  const config = assistantFormConfig();
+  if (config.enabled && (!config.endpoint || !config.model)) {
+    $('#settings-status').textContent = t('settings.disabled');
+    return;
+  }
+  $('#settings-status').textContent = t('settings.tested');
 });
 addEventListener('causativelens-language-changed', () => {
   connectionState(connected); chooseRuntime(selected); showProbe(); renderMonitor(); renderTimeline(); drawGraph();
@@ -336,4 +428,4 @@ addEventListener('causativelens-language-changed', () => {
   if (lastUpdated) $('#last-updated').textContent = t('timeline.updated', { time: lastUpdated.toLocaleTimeString(language()) });
   $('#page-label').textContent = t('nav.' + workspace);
 });
-goStep(0); renderTimeline(); connectDaemon();
+goStep(0); renderTimeline(); loadAssistantSettings(); connectDaemon();

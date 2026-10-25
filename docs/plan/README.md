@@ -21,6 +21,8 @@
 
 ## 产出物
 
+- [v0.1.2 证据级采集与因果履约方案](v0.1.2.md) · [English](v0.1.2.en-US.md)：补齐真实 ETW/TDH、时钟、ring/spool 和可复核因果闭环的下一版 Beta 方案
+
 - [implementation-plan.md](implementation-plan.md)
 - [gui-ux-spec.md](gui-ux-spec.md)
 - [installer-spec.md](installer-spec.md)

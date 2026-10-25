@@ -1,4 +1,5 @@
 mod monitoring;
+use clens_assist::{analyze as analyze_with_assistant, AssistantConfig, AssistantRequest};
 use clens_capture::{CaptureHealth, ClockAnchor};
 use clens_core::{
     align_candidate_at, event_path_score, is_constraint_conflict, semantic_score,
@@ -587,6 +588,10 @@ impl DaemonState {
                     }
                 }
             }
+            "assist.analyze" => match assistant_analysis(&request.params) {
+                Ok(result) => RpcResponse::ok(request.id, result),
+                Err(error) => RpcResponse::error(request.id, RpcError::InvalidParams(error)),
+            },
             method
                 if method == "advise" || method == "enforce" || method.starts_with("decision") =>
             {
@@ -599,6 +604,28 @@ impl DaemonState {
     pub fn session_mut(&mut self, session_id: Uuid) -> Option<&mut ObservationSession> {
         self.sessions.get_mut(&session_id)
     }
+}
+
+fn assistant_analysis(params: &Value) -> Result<Value, String> {
+    let config = params
+        .get("config")
+        .cloned()
+        .map(serde_json::from_value::<AssistantConfig>)
+        .transpose()
+        .map_err(|error| format!("invalid assistant config: {error}"))?
+        .unwrap_or_default();
+    let request = params
+        .get("request")
+        .cloned()
+        .ok_or_else(|| "assistant request is required".to_owned())
+        .and_then(|value| {
+            serde_json::from_value::<AssistantRequest>(value)
+                .map_err(|error| format!("invalid assistant request: {error}"))
+        })?;
+    let api_key = params.get("api_key").and_then(Value::as_str);
+    let result =
+        analyze_with_assistant(&config, api_key, &request).map_err(|error| error.to_string())?;
+    serde_json::to_value(result).map_err(|error| error.to_string())
 }
 
 fn session_id(params: &Value) -> Option<Uuid> {
@@ -1079,6 +1106,44 @@ mod tests {
                 .and_then(|chain| chain.get(key))
                 .is_some());
         }
+    }
+
+    #[test]
+    fn assistant_rpc_is_disabled_without_opt_in_and_never_echoes_secret() {
+        let mut state = DaemonState::new();
+        let response = state.handle(RpcRequest {
+            id: 44,
+            method: "assist.analyze".to_owned(),
+            params: json!({
+                "api_key": "super-secret-test-key",
+                "config": {"enabled": false},
+                "request": {"query":"why","chain":{},"language":"en-US"}
+            }),
+        });
+        let body = serde_json::to_string(&response).expect("response json");
+        assert!(body.contains("assistant is disabled"));
+        assert!(!body.contains("super-secret-test-key"));
+    }
+
+    #[test]
+    fn assistant_rpc_rejects_malformed_request_before_provider_access() {
+        let mut state = DaemonState::new();
+        let response = state.handle(RpcRequest {
+            id: 45,
+            method: "assist.analyze".to_owned(),
+            params: json!({
+                "config": {"enabled": true, "endpoint": "https://example.invalid", "model": "jev-test"},
+                "request": {"query":"why"}
+            }),
+        });
+        assert_eq!(
+            response.error.as_ref().map(|error| error.code.as_str()),
+            Some("invalid_params")
+        );
+        assert!(response
+            .error
+            .as_ref()
+            .is_some_and(|error| error.message.contains("invalid assistant request")));
     }
 
     #[test]

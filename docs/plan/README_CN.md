@@ -21,6 +21,8 @@
 
 ## 产出物
 
+- [v0.1.2 证据级采集与因果履约方案](v0.1.2.md) · [English](v0.1.2.en-US.md)
+
 - [implementation-plan.md](implementation-plan.md)
 - [gui-ux-spec.md](gui-ux-spec.md)
 - [installer-spec.md](installer-spec.md)

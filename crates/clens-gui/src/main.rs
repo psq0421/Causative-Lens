@@ -2,6 +2,8 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 #[cfg(feature = "tauri-shell")]
+use clens_assist::{load_config, save_config, AssistantConfig};
+#[cfg(feature = "tauri-shell")]
 use clens_daemon_client::RpcClient;
 #[cfg(feature = "tauri-shell")]
 use clens_types::Mode;
@@ -42,6 +44,19 @@ async fn rpc_call(method: String, params: Value) -> Result<Value, String> {
     })
     .await
     .map_err(|error| error.to_string())?
+}
+
+#[cfg(feature = "tauri-shell")]
+#[tauri::command]
+fn assistant_settings_get() -> Result<AssistantConfig, String> {
+    load_config().map_err(|error| error.to_string())
+}
+
+#[cfg(feature = "tauri-shell")]
+#[tauri::command]
+fn assistant_settings_save(config: AssistantConfig) -> Result<AssistantConfig, String> {
+    save_config(&config).map_err(|error| error.to_string())?;
+    load_config().map_err(|error| error.to_string())
 }
 
 #[cfg(feature = "tauri-shell")]
@@ -125,7 +140,9 @@ fn main() {
             bootstrap,
             rpc_call,
             connect_daemon,
-            pick_monitor_folder
+            pick_monitor_folder,
+            assistant_settings_get,
+            assistant_settings_save
         ])
         .run(tauri::generate_context!());
     if let Err(error) = result {

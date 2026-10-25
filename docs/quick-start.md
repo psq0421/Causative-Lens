@@ -91,7 +91,21 @@ clens why --path config.yaml --json
 
 The response has five stable sections: trigger assertion, evidence events, verdict, reverse attribution, and confidence/health. Unsupported natural language falls back to `clens why --path <p>` instead of inventing a query.
 
-## 6. Open and replay sessions
+## 6. Optional Jev / model-assisted analysis
+
+The deterministic five-part chain remains the source of truth. You can optionally ask Jev or another compatible endpoint to explain that submitted chain:
+
+```powershell
+clens assist --enable --provider jev --endpoint https://your-jev-endpoint.example/v1/chat/completions --model jev-causal
+$env:CAUSATIVELENS_LLM_API_KEY = 'paste-the-key-for-this-shell-only'
+clens why --path config.yaml --assist
+```
+
+Use `--api-key-stdin` when a shell environment is not appropriate. The key is never written to `settings.json`; the assistant receives a bounded, observe-only evidence chain. Paths are redacted by default and raw quotes are omitted unless you explicitly enable them in the GUI **Settings** page. Findings are marked ungrounded when their assertion/event references are absent from the submitted chain.
+
+The GUI exposes the same controls under **Settings**, including Jev/OpenAI-compatible/Anthropic-compatible/Ollama endpoints, token and timeout budgets, redaction, automatic post-query analysis, timeline refresh and retention. **Query → Optional analysis** calls the same daemon RPC as the CLI; it cannot alter verdicts, execute tools, or enable the v0.2.0 intervention layer.
+
+## 7. Open and replay sessions
 
 Currently `open` does not load the named `.cllens` file. The existing replay command compares supplied JSON arrays; it does not implement database-session recovery.
 
@@ -103,11 +117,11 @@ clens replay --baseline baseline.json --branch branch.json --json
 
 v0.1.0 replay is a read-only overlay. It compares observed runs and highlights differences; counterfactual simulation remains a v2 idea.
 
-## 7. Harness logs and adapters
+## 8. Harness logs and adapters
 
 Harness input uses append-only JSONL. Generic parsing, tail, quarantine and schema-sentinel primitives exist at library level, but automatic vendor input is not connected. Runtime descriptors remain unverified Tier3 entries. Direct `session.ingest_harness` RPC bypasses the generic parser, so zero quarantine counters do not establish healthy input. There is no `clens adapters doctor` CLI command. See the [detailed integration tutorial](guide/runtime-integration.md).
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | Symptom | Action |
 |---|---|
@@ -118,7 +132,7 @@ Harness input uses append-only JSONL. Generic parsing, tail, quarantine and sche
 | WebView2 missing | Run the official Evergreen bootstrapper, then relaunch the GUI. |
 | A locked file survives uninstall | Reboot; the uninstaller moves it to `.trash` and retries cleanup. |
 
-## 9. Build from source
+## 10. Build from source
 
 ```powershell
 cargo fmt --all -- --check
@@ -131,7 +145,7 @@ powershell -ExecutionPolicy Bypass -File installer/installer-e2e.ps1 -InstallerP
 
 Formal Release also requires Azure Trusted Signing, SBOM, deterministic-build evidence, and a clean VM matrix. Local credentials are never replaced with a self-signed certificate.
 
-## 10. Uninstall cleanly
+## 11. Uninstall cleanly
 
 Use **Apps > Installed apps > CausativeLens > Uninstall**, or:
 

@@ -14,6 +14,7 @@ tauri-build = { version = "2", features = [], optional = true }
 [dependencies]
 clens-types = { path = "../clens-types" }
 clens-daemon-client = { path = "../clens-daemon-client" }
+clens-assist = { path = "../clens-assist" }
 serde.workspace = true
 serde_json.workspace = true
 tauri = { version = "2", features = [], optional = true }

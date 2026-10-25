@@ -333,6 +333,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clens-assist"
+version = "0.1.1"
+dependencies = [
+ "clens-types",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "clens-capture"
 version = "0.1.1"
 dependencies = [
@@ -344,6 +354,7 @@ dependencies = [
 name = "clens-cli"
 version = "0.1.1"
 dependencies = [
+ "clens-assist",
  "clens-daemon-client",
  "clens-types",
  "serde",
@@ -363,6 +374,7 @@ dependencies = [
 name = "clens-daemon"
 version = "0.1.1"
 dependencies = [
+ "clens-assist",
  "clens-capture",
  "clens-core",
  "clens-harnessd",
@@ -387,6 +399,7 @@ dependencies = [
 name = "clens-gui"
 version = "0.1.1"
 dependencies = [
+ "clens-assist",
  "clens-daemon-client",
  "clens-types",
  "serde",

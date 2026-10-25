@@ -10,6 +10,7 @@ clens-capture = { path = "../clens-capture" }
 clens-core = { path = "../clens-core" }
 clens-harnessd = { path = "../clens-harnessd" }
 clens-storage = { path = "../clens-storage" }
+clens-assist = { path = "../clens-assist" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

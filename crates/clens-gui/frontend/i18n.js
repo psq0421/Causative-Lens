@@ -29,6 +29,11 @@ const ENTRIES = {
     "關於與說明",
     "About & help"
   ],
+  "nav.settings": [
+    "设置",
+    "設定",
+    "Settings"
+  ],
   "local.note": [
     "轨迹留在本机。只读，不干预。",
     "軌跡留在本機。唯讀，不干預。",
@@ -459,10 +464,135 @@ const ENTRIES = {
     "查詢",
     "Query"
   ],
+  "query.assist": [
+    "辅助分析",
+    "輔助分析",
+    "Assist"
+  ],
   "query.hint": [
     "未连接系统采集时，“未观测”不代表 Agent 没有执行。",
     "未連接系統擷取時，「未觀測」不代表 Agent 未執行。",
     "Without system capture, unobserved does not mean the agent did nothing."
+  ],
+  "settings.subtitle": [
+    "把观测、显示和可选的辅助分析调成你的工作方式。",
+    "把擷取、顯示和可選的輔助分析調成你的工作方式。",
+    "Tune observation, display and optional assistance to your workflow."
+  ],
+  "settings.localOnly": [
+    "本机配置",
+    "本機設定",
+    "LOCAL SETTINGS"
+  ],
+  "settings.analysisTitle": [
+    "辅助分析",
+    "輔助分析",
+    "ASSISTED ANALYSIS"
+  ],
+  "settings.analysisHelp": [
+    "启用后，Jev 或兼容 API 只会分析你明确提交的证据链，不会改变履约判定或执行任何干预。",
+    "啟用後，Jev 或相容 API 只會分析你明確提交的證據鏈，不會改變履約判定或執行任何介入。",
+    "When enabled, Jev or a compatible API analyzes only the evidence chain you submit. It cannot change verdicts or perform intervention."
+  ],
+  "settings.enabled": [
+    "启用可选辅助分析",
+    "啟用可選輔助分析",
+    "Enable optional assistant"
+  ],
+  "settings.provider": [
+    "提供方",
+    "提供方",
+    "Provider"
+  ],
+  "settings.model": [
+    "模型",
+    "模型",
+    "Model"
+  ],
+  "settings.endpoint": [
+    "API endpoint",
+    "API endpoint",
+    "API endpoint"
+  ],
+  "settings.maxTokens": [
+    "最大输出 tokens",
+    "最大輸出 tokens",
+    "Max output tokens"
+  ],
+  "settings.temperature": [
+    "Temperature",
+    "Temperature",
+    "Temperature"
+  ],
+  "settings.timeout": [
+    "超时（秒）",
+    "逾時（秒）",
+    "Timeout (seconds)"
+  ],
+  "settings.apiKey": [
+    "API key（本次运行）",
+    "API key（本次執行）",
+    "API key (this run)"
+  ],
+  "settings.redact": [
+    "发送前脱敏路径",
+    "傳送前脫敏路徑",
+    "Redact paths before sending"
+  ],
+  "settings.quotes": [
+    "允许发送 raw quote",
+    "允許傳送 raw quote",
+    "Allow raw quotes"
+  ],
+  "settings.auto": [
+    "查询后自动辅助分析",
+    "查詢後自動輔助分析",
+    "Assist after each query"
+  ],
+  "settings.displayTitle": [
+    "显示与工作流",
+    "顯示與工作流程",
+    "DISPLAY & WORKFLOW"
+  ],
+  "settings.refresh": [
+    "时间线刷新间隔（毫秒）",
+    "時間線更新間隔（毫秒）",
+    "Timeline refresh interval (ms)"
+  ],
+  "settings.retention": [
+    "时间线保留条数",
+    "時間線保留筆數",
+    "Timeline retention"
+  ],
+  "settings.secretNote": [
+    "API key 只保留在当前 GUI 进程内存，不写入 settings.json；CLI 使用 CAUSATIVELENS_LLM_API_KEY 或 --api-key-stdin。",
+    "API key 只保留在目前 GUI 進程記憶體，不寫入 settings.json；CLI 使用 CAUSATIVELENS_LLM_API_KEY 或 --api-key-stdin。",
+    "The API key stays in this GUI process and is never written to settings.json. CLI uses CAUSATIVELENS_LLM_API_KEY or --api-key-stdin."
+  ],
+  "settings.test": [
+    "测试配置",
+    "測試設定",
+    "Test configuration"
+  ],
+  "settings.save": [
+    "保存设置",
+    "儲存設定",
+    "Save settings"
+  ],
+  "settings.saved": [
+    "设置已保存。API key 仍只在本次运行有效。",
+    "設定已儲存。API key 仍只在本次執行有效。",
+    "Settings saved. The API key remains valid only for this run."
+  ],
+  "settings.tested": [
+    "配置格式正确；实际 API 调用会在提交辅助分析时发生。",
+    "設定格式正確；實際 API 呼叫會在提交輔助分析時發生。",
+    "Configuration is valid; the API is called when you submit an analysis."
+  ],
+  "settings.disabled": [
+    "请先启用辅助分析并填写 endpoint 与模型。",
+    "請先啟用輔助分析並填寫 endpoint 與模型。",
+    "Enable assistance and fill in an endpoint and model first."
   ],
   "about.architecture": [
     "一 daemon，两前端。GUI 通过 RPC 读取同一份证据，轨迹仅在本机处理。",

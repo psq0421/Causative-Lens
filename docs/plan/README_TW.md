@@ -15,6 +15,7 @@
 
 - [English](README.en-US.md) · [简体中文](README_CN.md) · [繁體中文](README_TW.md)
 - [實作方案](implementation-plan.md) · [安裝器規格](installer-spec.md) · [GUI UX](gui-ux-spec.md)
+- [v0.1.2 證據級擷取與因果履約方案](v0.1.2.md) · [English](v0.1.2.en-US.md)
 - [測試方案](test-plan.md) · [任務卡](task-cards/) · [閘門報告](gate-reports/)
 
 每張卡保留可複製 DoD 命令與完成記錄；閘門報告是航海日誌，沒有證據就不靠樂觀前進。

@@ -8,6 +8,7 @@ members = [
     "crates/clens-storage",
     "crates/clens-daemon",
     "crates/clens-daemon-client",
+    "crates/clens-assist",
     "crates/clens-cli",
     "crates/clens-arch-tests",
     "crates/clens-gui",

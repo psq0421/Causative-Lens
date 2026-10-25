@@ -2,7 +2,9 @@ mod query;
 mod replay;
 mod terminal;
 
+use clens_assist::{load_config, save_config, AssistantConfig, AssistantProvider};
 use clens_types::UiLanguage;
+use std::io::Read;
 
 pub use query::{
     parse_restricted_query, render_causal_chain, CausalChain, CausalRecord, QueryIntent,
@@ -13,6 +15,7 @@ pub use terminal::{detect_terminal, render_timeline, TerminalCapabilities, Timel
 
 pub const OBSERVE_COMMANDS: &[&str] = &[
     "run", "attach", "open", "why", "timeline", "watch", "export", "doctor", "shell", "replay",
+    "assist",
 ];
 pub const DISABLED_COMMANDS: &[&str] = &["advise", "enforce", "decision"];
 
@@ -112,15 +115,55 @@ pub fn dispatch_live(args: &[String]) -> CliOutput {
     let Ok(result) = client.call(method, params) else {
         return dispatch_with_language(&args, language);
     };
-    let payload = if command == "doctor" {
+    let mut payload = if command == "doctor" {
         serde_json::json!({"status":"ok","mode":"observe","installation":installation_label(),"daemon":"connected","hello":result})
     } else {
         result
     };
+    if command == "why" && has_flag(&args, "--assist") {
+        match assistant_config_from_args(&args) {
+            Ok((config, api_key)) => {
+                let request = serde_json::json!({
+                    "query": query_argument(&args),
+                    "chain": payload.get("chain").cloned().unwrap_or_else(|| payload.clone()),
+                    "language": language.tag(),
+                });
+                let params = serde_json::json!({
+                    "config": config,
+                    "request": request,
+                    "api_key": api_key,
+                });
+                match client.call("assist.analyze", params) {
+                    Ok(assistant) => {
+                        if let Some(object) = payload.as_object_mut() {
+                            object.insert("assistant".to_owned(), assistant);
+                        }
+                    }
+                    Err(error) => {
+                        if let Some(object) = payload.as_object_mut() {
+                            object.insert(
+                                "assistant_error".to_owned(),
+                                serde_json::json!(error.to_string()),
+                            );
+                        }
+                    }
+                }
+            }
+            Err(error) => {
+                if let Some(object) = payload.as_object_mut() {
+                    object.insert("assistant_error".to_owned(), serde_json::json!(error));
+                }
+            }
+        }
+    }
     let text = if args.iter().any(|arg| arg == "--json") {
         payload.to_string()
     } else {
-        format!("{command}: {payload}")
+        if command == "why" {
+            human_why(&payload.to_string(), language)
+        } else {
+            human_output(command, &payload.to_string(), language)
+        }
     };
     CliOutput {
         code: ExitCode::Ok,
@@ -170,6 +213,9 @@ fn dispatch_with_language(args: &[String], language: UiLanguage) -> CliOutput {
             text: disabled_message(language),
         };
     }
+    if command == "assist" {
+        return dispatch_assist(args, language);
+    }
     if !OBSERVE_COMMANDS.contains(&command) {
         return CliOutput {
             code: ExitCode::Usage,
@@ -198,7 +244,7 @@ fn dispatch_with_language(args: &[String], language: UiLanguage) -> CliOutput {
     } else if command == "why" {
         human_why(&payload, language)
     } else {
-        human_output(command, &payload)
+        human_output(command, &payload, language)
     };
     CliOutput {
         code: ExitCode::Ok,
@@ -265,7 +311,24 @@ fn query_argument(args: &[String]) -> String {
     let mut values = Vec::new();
     let mut index = 1usize;
     while index < args.len() {
-        if args[index] == "--json" {
+        if args[index] == "--json" || args[index] == "--assist" {
+            index += 1;
+            continue;
+        }
+        if matches!(
+            args[index].as_str(),
+            "--provider"
+                | "--endpoint"
+                | "--model"
+                | "--max-tokens"
+                | "--temperature"
+                | "--timeout"
+                | "--api-key-env"
+        ) {
+            index += 2;
+            continue;
+        }
+        if args[index] == "--api-key-stdin" {
             index += 1;
             continue;
         }
@@ -280,8 +343,206 @@ fn query_argument(args: &[String]) -> String {
     }
     values.join(" ")
 }
-fn human_output(command: &str, payload: &str) -> String {
-    format!("{command}: {payload}")
+fn human_output(command: &str, payload: &str, language: UiLanguage) -> String {
+    let title = match (command, language) {
+        ("doctor", UiLanguage::SimplifiedChinese) => "诊断",
+        ("doctor", UiLanguage::TraditionalChinese) => "診斷",
+        ("assist", UiLanguage::SimplifiedChinese) => "辅助分析设置",
+        ("assist", UiLanguage::TraditionalChinese) => "輔助分析設定",
+        ("replay", UiLanguage::SimplifiedChinese) => "回放",
+        ("replay", UiLanguage::TraditionalChinese) => "回放",
+        ("timeline", UiLanguage::SimplifiedChinese) => "时间线",
+        ("timeline", UiLanguage::TraditionalChinese) => "時間線",
+        _ => command,
+    };
+    let body = serde_json::from_str::<serde_json::Value>(payload)
+        .map(|value| format_human_value(&value, 0))
+        .unwrap_or_else(|_| payload.to_owned());
+    format!(
+        "{title}\n{}\n{body}",
+        "─".repeat(title.chars().count().max(8))
+    )
+}
+
+fn format_human_value(value: &serde_json::Value, indent: usize) -> String {
+    let padding = " ".repeat(indent);
+    match value {
+        serde_json::Value::Object(map) => map
+            .iter()
+            .map(|(key, child)| match child {
+                serde_json::Value::Object(_) | serde_json::Value::Array(_) => {
+                    format!("{padding}{key}:\n{}", format_human_value(child, indent + 2))
+                }
+                _ => format!("{padding}{key}: {}", scalar_text(child)),
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
+        serde_json::Value::Array(items) => items
+            .iter()
+            .map(|item| format!("{padding}- {}", scalar_text(item)))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        _ => format!("{padding}{}", scalar_text(value)),
+    }
+}
+
+fn scalar_text(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(text) => text.clone(),
+        serde_json::Value::Null => "—".to_owned(),
+        _ => value.to_string(),
+    }
+}
+
+fn has_flag(args: &[String], flag: &str) -> bool {
+    args.iter().any(|arg| arg == flag)
+}
+
+fn flag_value(args: &[String], flag: &str) -> Option<String> {
+    args.iter()
+        .position(|arg| arg == flag)
+        .and_then(|index| args.get(index + 1))
+        .filter(|value| !value.starts_with('-'))
+        .cloned()
+}
+
+fn assistant_config_from_args(
+    args: &[String],
+) -> Result<(AssistantConfig, Option<String>), String> {
+    let mut config = load_config().map_err(|error| error.to_string())?;
+    if let Some(value) = flag_value(args, "--provider") {
+        config.provider = AssistantProvider::parse(&value)
+            .ok_or_else(|| format!("unknown assistant provider: {value}"))?;
+    }
+    if let Some(value) = flag_value(args, "--endpoint") {
+        config.endpoint = value;
+    }
+    if let Some(value) = flag_value(args, "--model") {
+        config.model = value;
+    }
+    if let Some(value) = flag_value(args, "--max-tokens") {
+        config.max_tokens = value
+            .parse::<u32>()
+            .map_err(|error| format!("invalid --max-tokens: {error}"))?;
+    }
+    if let Some(value) = flag_value(args, "--temperature") {
+        config.temperature = value
+            .parse::<f32>()
+            .map_err(|error| format!("invalid --temperature: {error}"))?;
+    }
+    if let Some(value) = flag_value(args, "--timeout") {
+        config.timeout_secs = value
+            .parse::<u64>()
+            .map_err(|error| format!("invalid --timeout: {error}"))?;
+    }
+    if !config.enabled {
+        return Err("assistant is disabled; run `clens assist --enable ...` first".to_owned());
+    }
+    let api_key = if has_flag(args, "--api-key-stdin") {
+        let mut value = String::new();
+        std::io::stdin()
+            .read_to_string(&mut value)
+            .map_err(|error| format!("cannot read API key from stdin: {error}"))?;
+        Some(value.trim().to_owned())
+    } else {
+        let name = flag_value(args, "--api-key-env")
+            .unwrap_or_else(|| "CAUSATIVELENS_LLM_API_KEY".to_owned());
+        std::env::var(name).ok()
+    };
+    Ok((config, api_key))
+}
+
+fn dispatch_assist(args: &[String], language: UiLanguage) -> CliOutput {
+    if has_flag(args, "--help") || args.len() == 1 {
+        let text = match language {
+            UiLanguage::EnglishUs => "assist\n────────\nOptional evidence-grounded analysis. API keys are never written to settings.\n\n  clens assist --enable --provider jev --endpoint <url> --model <name>\n  clens assist --disable\n  clens why --path <path> --assist [--api-key-env NAME]\n  clens why --path <path> --assist --api-key-stdin".to_owned(),
+            UiLanguage::SimplifiedChinese => "辅助分析\n────────\n可选的证据辅助分析。API key 永远不会写入设置文件。\n\n  clens assist --enable --provider jev --endpoint <url> --model <name>\n  clens assist --disable\n  clens why --path <path> --assist [--api-key-env NAME]\n  clens why --path <path> --assist --api-key-stdin".to_owned(),
+            UiLanguage::TraditionalChinese => "輔助分析\n────────\n可選的證據輔助分析。API key 永遠不會寫入設定檔。\n\n  clens assist --enable --provider jev --endpoint <url> --model <name>\n  clens assist --disable\n  clens why --path <path> --assist [--api-key-env NAME]\n  clens why --path <path> --assist --api-key-stdin".to_owned(),
+        };
+        return CliOutput {
+            code: ExitCode::Ok,
+            text,
+        };
+    }
+    let mut config = match load_config() {
+        Ok(value) => value,
+        Err(error) => {
+            return CliOutput {
+                code: ExitCode::Runtime,
+                text: error.to_string(),
+            };
+        }
+    };
+    if has_flag(args, "--enable") {
+        config.enabled = true;
+    }
+    if has_flag(args, "--disable") {
+        config.enabled = false;
+    }
+    if let Some(value) = flag_value(args, "--provider") {
+        match AssistantProvider::parse(&value) {
+            Some(provider) => config.provider = provider,
+            None => {
+                return CliOutput {
+                    code: ExitCode::Usage,
+                    text: format!("unknown assistant provider: {value}"),
+                }
+            }
+        }
+    }
+    if let Some(value) = flag_value(args, "--endpoint") {
+        config.endpoint = value;
+    }
+    if let Some(value) = flag_value(args, "--model") {
+        config.model = value;
+    }
+    if let Some(value) = flag_value(args, "--max-tokens") {
+        match value.parse() {
+            Ok(parsed) => config.max_tokens = parsed,
+            Err(error) => {
+                return CliOutput {
+                    code: ExitCode::Usage,
+                    text: format!("invalid --max-tokens: {error}"),
+                }
+            }
+        }
+    }
+    if let Some(value) = flag_value(args, "--temperature") {
+        match value.parse() {
+            Ok(parsed) => config.temperature = parsed,
+            Err(error) => {
+                return CliOutput {
+                    code: ExitCode::Usage,
+                    text: format!("invalid --temperature: {error}"),
+                }
+            }
+        }
+    }
+    if let Err(error) = save_config(&config) {
+        return CliOutput {
+            code: ExitCode::Runtime,
+            text: error.to_string(),
+        };
+    }
+    let payload = serde_json::json!({
+        "enabled": config.enabled,
+        "provider": config.provider.label(),
+        "endpoint": config.endpoint,
+        "model": config.model,
+        "max_tokens": config.max_tokens,
+        "temperature": config.temperature,
+        "redact_paths": config.redact_paths,
+        "api_key_persisted": false,
+    });
+    let text = if has_flag(args, "--json") {
+        payload.to_string()
+    } else {
+        human_output("assist", &payload.to_string(), language)
+    };
+    CliOutput {
+        code: ExitCode::Ok,
+        text,
+    }
 }
 
 fn human_why(payload: &str, language: UiLanguage) -> String {
@@ -310,15 +571,37 @@ fn human_why(payload: &str, language: UiLanguage) -> String {
         .and_then(|item| item.get("note"))
         .and_then(serde_json::Value::as_str)
         .unwrap_or("unknown");
+    let assistant_section = if let Some(error) = value
+        .get("assistant_error")
+        .and_then(serde_json::Value::as_str)
+    {
+        match language {
+            UiLanguage::EnglishUs => format!("\n6. assistant: unavailable ({error})"),
+            UiLanguage::SimplifiedChinese => format!("\n6. 辅助分析：不可用（{error}）"),
+            UiLanguage::TraditionalChinese => format!("\n6. 輔助分析：不可用（{error}）"),
+        }
+    } else if let Some(assistant) = value.get("assistant") {
+        let summary = assistant
+            .get("summary")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("(no summary)");
+        match language {
+            UiLanguage::EnglishUs => format!("\n6. assistant: {summary}"),
+            UiLanguage::SimplifiedChinese => format!("\n6. 辅助分析：{summary}"),
+            UiLanguage::TraditionalChinese => format!("\n6. 輔助分析：{summary}"),
+        }
+    } else {
+        String::new()
+    };
     match language {
         UiLanguage::EnglishUs => format!(
-            "why\n1. trigger assertion: {trigger}\n2. evidence events: {evidence_count}\n3. verdict: {verdict}\n4. reverse attribution: available in --json\n5. confidence/health: {health}"
+            "why\n1. trigger assertion: {trigger}\n2. evidence events: {evidence_count}\n3. verdict: {verdict}\n4. reverse attribution: available in --json\n5. confidence/health: {health}{assistant_section}"
         ),
         UiLanguage::SimplifiedChinese => format!(
-            "为什么\n1. 触发断言：{trigger}\n2. 证据事件：{evidence_count}\n3. 履约判定：{verdict}\n4. 反向归因：请使用 --json 查看\n5. 置信度/健康度：{health}"
+            "为什么\n1. 触发断言：{trigger}\n2. 证据事件：{evidence_count}\n3. 履约判定：{verdict}\n4. 反向归因：请使用 --json 查看\n5. 置信度/健康度：{health}{assistant_section}"
         ),
         UiLanguage::TraditionalChinese => format!(
-            "為什麼\n1. 觸發斷言：{trigger}\n2. 證據事件：{evidence_count}\n3. 履約判定：{verdict}\n4. 反向歸因：請使用 --json 查看\n5. 信心度/健康度：{health}"
+            "為什麼\n1. 觸發斷言：{trigger}\n2. 證據事件：{evidence_count}\n3. 履約判定：{verdict}\n4. 反向歸因：請使用 --json 查看\n5. 信心度/健康度：{health}{assistant_section}"
         ),
     }
 }
@@ -326,15 +609,15 @@ fn usage_for(language: UiLanguage) -> String {
     let commands = OBSERVE_COMMANDS.join("|");
     match language {
         UiLanguage::EnglishUs => format!(
-            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  Keep the footprints. Leave the journey untouched.\n\n  Usage: clens <{commands}>\n         [--json] [--lang en-US|zh-CN|zh-TW]\n\n  Start here\n    clens --version          Show the installed version\n    clens doctor --json      Installation / daemon diagnostics\n    clens-gui                Open the listening wizard\n\n  v0.1.1 listens to agent trace files through the GUI.\n  run / attach / shell are not connected to live capture yet.\n  Mode: observe / local processing\n",
+            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  Keep the footprints. Leave the journey untouched.\n\n  Usage: clens <{commands}>\n         [--json] [--lang en-US|zh-CN|zh-TW]\n\n  Start here\n    clens --version          Show the installed version\n    clens doctor --json      Installation / daemon diagnostics\n    clens why --assist ...   Optional evidence-grounded model analysis\n    clens assist --help      Configure the optional assistant\n    clens-gui                Open the listening wizard\n\n  v0.1.1 listens to agent trace files through the GUI.\n  run / attach / shell are not connected to live capture yet.\n  Mode: observe / local processing\n",
             clens_types::DEV_VERSION
         ),
         UiLanguage::SimplifiedChinese => format!(
-            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住脚印，不改写旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  从这里开始\n    clens --version          查看安装版本\n    clens doctor --json      安装与 daemon 诊断\n    clens-gui                打开监听向导\n\n  v0.1.1 通过 GUI 监听 Agent 轨迹文件。\n  run / attach / shell 尚未接通常驻采集。\n  模式：observe / 本地处理\n",
+            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住脚印，不改写旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  从这里开始\n    clens --version          查看安装版本\n    clens doctor --json      安装与 daemon 诊断\n    clens why --assist ...   可选的证据辅助分析\n    clens assist --help     配置可选辅助层\n    clens-gui                打开监听向导\n\n  v0.1.1 通过 GUI 监听 Agent 轨迹文件。\n  run / attach / shell 尚未接通实时采集。\n  模式：observe / 本地处理\n",
             clens_types::DEV_VERSION
         ),
         UiLanguage::TraditionalChinese => format!(
-            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住腳印，不改寫旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  從這裡開始\n    clens --version          查看安裝版本\n    clens doctor --json      安裝與 daemon 診斷\n    clens-gui                開啟監聽精靈\n\n  v0.1.1 透過 GUI 監聽 Agent 軌跡檔案。\n  run / attach / shell 尚未接通常駐擷取。\n  模式：observe / 本機處理\n",
+            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住腳印，不改寫旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  從這裡開始\n    clens --version          查看安裝版本\n    clens doctor --json      安裝與 daemon 診斷\n    clens why --assist ...   可選的證據輔助分析\n    clens assist --help     設定可選輔助層\n    clens-gui                開啟監聽精靈\n\n  v0.1.1 透過 GUI 監聽 Agent 軌跡檔案。\n  run / attach / shell 尚未接通即時擷取。\n  模式：observe / 本機處理\n",
             clens_types::DEV_VERSION
         ),
     }
@@ -431,5 +714,20 @@ mod tests {
         let result = dispatch(&args(&["--lang", "en-US", "--help"]));
         assert_eq!(result.code, ExitCode::Ok);
         assert!(result.text.contains("Usage:"));
+    }
+
+    #[test]
+    fn assist_help_describes_opt_in_and_secret_handling() {
+        let result = dispatch(&args(&["--lang", "en-US", "assist", "--help"]));
+        assert_eq!(result.code, ExitCode::Ok);
+        assert!(result.text.contains("API keys are never written"));
+        assert!(result.text.contains("--api-key-stdin"));
+    }
+
+    #[test]
+    fn assist_rejects_unknown_provider_without_writing_settings() {
+        let result = dispatch(&args(&["assist", "--provider", "not-a-provider"]));
+        assert_eq!(result.code, ExitCode::Usage);
+        assert!(result.text.contains("unknown assistant provider"));
     }
 }
