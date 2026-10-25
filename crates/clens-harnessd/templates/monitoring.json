@@ -1,0 +1,358 @@
+[
+  {
+    "id": "hermes",
+    "name": "Hermes Agent",
+    "profile_dirs": [
+      ".hermes/sessions",
+      ".hermes"
+    ],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择 Hermes 会话导出或 observer 日志目录。state.db 不能作为文本读取；没有轨迹时请先导出会话。",
+      "zh-TW": "選擇 Hermes 會話導出或 observer 日志目錄。state.db 不能作為文本讀取；沒有軌跡時請先導出會話。",
+      "en-US": "Select Hermes session exports or observer logs. Export sessions first if only state.db exists."
+    }
+  },
+  {
+    "id": "claude-code",
+    "name": "Claude Code",
+    "profile_dirs": [
+      ".claude/projects"
+    ],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "自动识别 Claude 消息及 tool_use。CLI 可用 stream-json；IDE/Desktop 与远程工具需独立确认。",
+      "zh-TW": "自動識別 Claude 消息及 tool_use。CLI 可用 stream-json；IDE/Desktop 與遠程工具需獨立確認。",
+      "en-US": "Detects Claude messages and tool_use. Use CLI stream-json or supported transcripts; remote tools need separate verification."
+    }
+  },
+  {
+    "id": "codex",
+    "name": "OpenAI Codex",
+    "profile_dirs": [
+      ".codex/sessions",
+      ".codex/archived_sessions"
+    ],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "识别 Codex exec JSONL 及会话轨迹；不会获取隐藏思维链。",
+      "zh-TW": "識別 Codex exec JSONL 及會話軌跡；不會獲取隱藏思維鏈。",
+      "en-US": "Detects Codex exec JSONL and session traces; private reasoning is not exposed."
+    }
+  },
+  {
+    "id": "antigravity",
+    "name": "Google Antigravity CLI",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "读取当前版本导出的结构化轨迹。不要将 Gemini CLI 参数套给 Antigravity。",
+      "zh-TW": "讀取當前版本導出的結構化軌跡。不要將 Gemini CLI 參數套給 Antigravity。",
+      "en-US": "Use structured traces exported by your installed version. Gemini CLI flags are not assumed."
+    }
+  },
+  {
+    "id": "openclaw",
+    "name": "OpenClaw",
+    "profile_dirs": [
+      ".openclaw/agents"
+    ],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "请选择 gateway 的会话轨迹目录。仅有网关健康日志时不会产生工具断言；远端动作不是本机 ETW。",
+      "zh-TW": "請選擇 gateway 的會話軌跡目錄。僅有網關健康日志時不會產生工具斷言；遠端動作不是本機 ETW。",
+      "en-US": "Select gateway session transcripts. Gateway health logs alone do not create tool assertions; remote activity is not local ETW."
+    }
+  },
+  {
+    "id": "manus",
+    "name": "Manus",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "请选择任务活动导出目录。云任务最终报告不能代替逐步工具轨迹或本机系统证据。",
+      "zh-TW": "請選擇任務活動導出目錄。云任務最終報告不能代替逐步工具軌跡或本機系統證據。",
+      "en-US": "Select task activity exports. A cloud task report is not a per-tool trace or local system evidence."
+    }
+  },
+  {
+    "id": "autogpt",
+    "name": "AutoGPT",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择实际 worker 的任务日志目录。Classic/Platform/容器分别确认；普通日志只显示文本。",
+      "zh-TW": "選擇實際 worker 的任務日志目錄。Classic/Platform/容器分別確認；普通日志只顯示文本。",
+      "en-US": "Select the actual worker's task logs. Verify Classic, Platform and container variants separately."
+    }
+  },
+  {
+    "id": "codebuddy",
+    "name": "CodeBuddy",
+    "profile_dirs": [
+      ".codebuddy/projects"
+    ],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "读取 CodeBuddy stream-json 或会话导出；保留正常权限设置。",
+      "zh-TW": "讀取 CodeBuddy stream-json 或會話導出；保留正常權限設置。",
+      "en-US": "Read CodeBuddy stream-json or session exports while keeping normal permissions."
+    }
+  },
+  {
+    "id": "workbuddy-cn",
+    "name": "WorkBuddy（国内版）",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择国内版任务活动导出目录；与国际版独立识别，不假设存在同名 CLI。",
+      "zh-TW": "選擇國內版任務活動導出目錄；與國際版獨立識別，不假設存在同名 CLI。",
+      "en-US": "Select CN task activity exports. This is independent of the international client; a same-name CLI is not assumed."
+    }
+  },
+  {
+    "id": "workbuddy-international",
+    "name": "WorkBuddy International",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择国际版任务活动导出目录；不要混入国内版会话。",
+      "zh-TW": "選擇國際版任務活動導出目錄；不要混入國內版會話。",
+      "en-US": "Select international task activity exports; keep CN sessions separate."
+    }
+  },
+  {
+    "id": "trae",
+    "name": "Trae Agent / TRAE CLI",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择实际执行器轨迹；IDE、开源 Agent 与 CLI 的协议可能不同。",
+      "zh-TW": "選擇實際執行器軌跡；IDE、開源 Agent 與 CLI 的協議可能不同。",
+      "en-US": "Select executor traces; IDE, open-source Agent and CLI protocols may differ."
+    }
+  },
+  {
+    "id": "aider",
+    "name": "Aider",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "识别聊天历史 Markdown 和结构化导出；聊天文字不会被伪造成实际写文件。",
+      "zh-TW": "識別聊天歷史 Markdown 和結構化導出；聊天文字不會被偽造成實際寫文件。",
+      "en-US": "Read chat-history Markdown or structured exports. Prose is never converted into observed file writes."
+    }
+  },
+  {
+    "id": "zcode",
+    "name": "ZCode",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择 ZCode 客户端轨迹。其他客户端仅更换智谱模型时，应选择实际客户端模板。",
+      "zh-TW": "選擇 ZCode 客戶端軌跡。其他客戶端僅更換智譜模型時，應選擇實際客戶端模板。",
+      "en-US": "Select ZCode client traces. When another client uses a Zhipu model, select that actual client."
+    }
+  },
+  {
+    "id": "qoder",
+    "name": "Qoder CN / Qoder CLI",
+    "profile_dirs": [
+      ".qoder/projects"
+    ],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择 CLI stream-json 或当前渠道会话导出；CN/国际版本需分别验证。",
+      "zh-TW": "選擇 CLI stream-json 或當前渠道會話導出；CN/國際版本需分別驗證。",
+      "en-US": "Select CLI stream-json or channel-specific exports. Verify CN and international variants separately."
+    }
+  },
+  {
+    "id": "codearts",
+    "name": "CodeArts Agent CLI",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择当前发行版的结构化活动导出，记录华为云区域和执行位置。",
+      "zh-TW": "選擇當前發行版的結構化活動導出，記錄華為云區域和執行位置。",
+      "en-US": "Select distribution-specific structured activity exports; record region and execution host."
+    }
+  },
+  {
+    "id": "minimax",
+    "name": "MiniMax Code CLI",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "若是 Claude/Codex 使用 MiniMax 模型，请选择对应客户端；独立 CLI 选择它的轨迹目录。",
+      "zh-TW": "若是 Claude/Codex 使用 MiniMax 模型，請選擇對應客戶端；獨立 CLI 選擇它的軌跡目錄。",
+      "en-US": "For Claude/Codex using MiniMax, choose that client. For a standalone CLI select its trace directory."
+    }
+  },
+  {
+    "id": "copilot",
+    "name": "GitHub Copilot CLI",
+    "profile_dirs": [
+      ".copilot/session-state"
+    ],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择 standalone Copilot 的会话事件目录；旧 gh 扩展、IDE 与云端任务独立验证。",
+      "zh-TW": "選擇 standalone Copilot 的會話事件目錄；舊 gh 擴展、IDE 與云端任務獨立驗證。",
+      "en-US": "Select standalone Copilot session events. Legacy gh, IDE and cloud agents need independent verification."
+    }
+  },
+  {
+    "id": "cursor",
+    "name": "Cursor CLI",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择 Cursor agent 的 stream-json 输出目录；不要将编辑器启动器当作执行器。",
+      "zh-TW": "選擇 Cursor agent 的 stream-json 輸出目錄；不要將編輯器啟動器當作執行器。",
+      "en-US": "Select Cursor agent stream-json output, not an editor launcher."
+    }
+  },
+  {
+    "id": "deepseek",
+    "name": "DeepSeek Harness",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "选择规范 Harness JSONL 或结构化工具轨迹。",
+      "zh-TW": "選擇規范 Harness JSONL 或結構化工具軌跡。",
+      "en-US": "Select normalized Harness JSONL or structured tool traces."
+    }
+  },
+  {
+    "id": "others",
+    "name": "Others / 其他软件",
+    "profile_dirs": [],
+    "formats": [
+      "harness-jsonl",
+      "tool-messages",
+      "codex",
+      "hermes-export",
+      "text"
+    ],
+    "guidance": {
+      "zh-CN": "自动探测通用 Harness、OpenAI/Anthropic 工具消息及文本；未知 JSON 会计数并提示，不伪造适配成功。",
+      "zh-TW": "自動探測通用 Harness、OpenAI/Anthropic 工具消息及文本；未知 JSON 會計數并提示，不偽造適配成功。",
+      "en-US": "Auto-detect Harness, OpenAI/Anthropic tools and text. Unknown JSON is counted, not presented as a successful adapter."
+    }
+  }
+]

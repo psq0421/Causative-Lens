@@ -9,6 +9,7 @@ default = []
 extractor-llm = []
 
 [dependencies]
+serde.workspace = true
 clens-types = { path = "../clens-types" }
 serde_json.workspace = true
 thiserror.workspace = true

@@ -1,3 +1,5 @@
+pub mod monitor;
+
 use clens_types::{
     normalize_path_pattern, stable_assertion_id, Assertion, AssertionOp, Expectation, HarnessEvent,
     HarnessSpan, IoMode, Mode, Phase, TargetPattern, ToolCall,
@@ -1167,6 +1169,9 @@ fn extract_shell_assertions(
 /// write assertion with an explicit order edge; shell templates emit one or
 /// more conservative assertions. Unknown tools return an empty vector.
 pub fn extract_rule_assertions(event: &HarnessEvent, requested_id: u64) -> Vec<Assertion> {
+    if event.phase != Phase::ToolCall {
+        return Vec::new();
+    }
     let Some(tool) = event.tool.as_ref() else {
         return Vec::new();
     };
