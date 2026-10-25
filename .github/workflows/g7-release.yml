@@ -10,6 +10,9 @@ permissions:
 
 jobs:
   x64-release:
+    # Pre-1.0 beta prereleases are explicitly authorized by the maintainer.
+    # Keep the production signing gate separate from the unsigned beta channel.
+    if: github.event_name == 'workflow_dispatch' || !startsWith(github.ref_name, 'v0.')
     runs-on: windows-latest
     env:
       # The Trusted Signing DLib and metadata are provisioned by the protected

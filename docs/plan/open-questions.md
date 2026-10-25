@@ -79,3 +79,5 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 | OQ-0111-04 | 缺少 Trusted Signing、干净 VM/重启、全量 GUI 性能和安全门禁证据 | 仅本地 x64 `-dev` 候选；不打正式 tag、不发布正式 Release。ARM64 依用户授权继续暂缓；没有用测试窗口出现时间替代冷启动测量 |
 | OQ-0111-05 | 旧 SBOM 仅列 workspace，旧安装器 E2E 把固定 sleep 当冷启动证据 | SBOM 包含目标平台传递依赖图；E2E 改为明确的 native-window smoke，保留性能预算未验证；测试拒绝覆盖已注册安装并恢复原快捷方式/PATH |
 | OQ-0111-06 | 新 Tauri dialog 依赖与旧 G7 Rust 1.82 固定 runner 可能不兼容 | 用现行 stable 执行实际 feature 构建；仅确认本机 1.99.1 通过，不承诺 1.82 MSRV；CI 不再钉死过旧工具链。原生对话框使用官方插件，不进入核心引擎依赖 |
+
+后续裁定（2026-10-25）：维护者明确要求“v1.0.0 之前都是测试版，发 release”。OQ-0111-04 的本地候选限制据此调整为：允许未签名 x64 `-dev` 安装包作为 GitHub Pre-release 发布，并允许 `v0.1.1` 测试标签；正式签名、ARM64 和完整 G7 验收的缺口仍按原证据记录。不得将测试通道发布写成正式 G7 全绿。

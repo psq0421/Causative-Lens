@@ -19,7 +19,7 @@ if (-not $hasConfig) {
     New-Item -ItemType Directory -Force (Split-Path -Parent $OutputStatus) | Out-Null
     $status | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 $OutputStatus
     if (-not $AllowDevUnsigned) { throw 'Trusted Signing is not configured. Formal release is blocked; use -AllowDevUnsigned only for a -dev package.' }
-    Write-Warning 'Unsigned development status written; this package must not be uploaded to GitHub Releases.'
+    Write-Warning 'Unsigned development status written. Publish only as an explicitly authorized pre-1.0 GitHub prerelease with a -dev filename and unsigned notice; production release remains blocked.'
     return
 }
 foreach ($file in $Files) {
