@@ -230,10 +230,12 @@ Function RegisterProduct
 FunctionEnd
 
 Function CreateProductShortcuts
+  SetOutPath "$INSTDIR"
   CreateDirectory "$SMPROGRAMS\CausativeLens"
   CreateShortCut "$DESKTOP\CausativeLens.lnk" "$INSTDIR\clens-gui.exe"
   CreateShortCut "$SMPROGRAMS\CausativeLens\CausativeLens GUI.lnk" "$INSTDIR\clens-gui.exe"
-  CreateShortCut "$SMPROGRAMS\CausativeLens\CausativeLens CLI.lnk" "$INSTDIR\clens.exe"
+  ; Keep the terminal alive after help finishes; /D disables user AutoRun scripts.
+  CreateShortCut "$SMPROGRAMS\CausativeLens\CausativeLens CLI.lnk" "$SYSDIR\cmd.exe" '/D /K $\"$\"$INSTDIR\clens.exe$\" --help$\"' "$INSTDIR\clens-gui.exe" 0 SW_SHOWNORMAL "" "CausativeLens CLI"
   Push "Desktop and Start Menu GUI/CLI shortcuts created"
   Call WriteLog
 FunctionEnd

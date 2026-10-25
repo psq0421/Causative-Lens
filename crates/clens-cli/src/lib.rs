@@ -326,11 +326,15 @@ fn usage_for(language: UiLanguage) -> String {
     let commands = OBSERVE_COMMANDS.join("|");
     match language {
         UiLanguage::EnglishUs => format!(
-            "CausativeLens {} (observe)\nUsage: clens <{commands}> [--json] [--lang en-US|zh-CN|zh-TW]",
+            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  Keep the footprints. Leave the journey untouched.\n\n  Usage: clens <{commands}>\n         [--json] [--lang en-US|zh-CN|zh-TW]\n\n  Start here\n    clens --version          Show the installed version\n    clens doctor --json      Installation / daemon diagnostics\n    clens-gui                Open the listening wizard\n\n  v0.1.1 listens to agent trace files through the GUI.\n  run / attach / shell are not connected to live capture yet.\n  Mode: observe / local processing\n",
             clens_types::DEV_VERSION
         ),
-        UiLanguage::SimplifiedChinese | UiLanguage::TraditionalChinese => format!(
-            "CausativeLens {}（observe）\n用法：clens <{commands}> [--json] [--lang en-US|zh-CN|zh-TW]",
+        UiLanguage::SimplifiedChinese => format!(
+            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住脚印，不改写旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  从这里开始\n    clens --version          查看安装版本\n    clens doctor --json      安装与 daemon 诊断\n    clens-gui                打开监听向导\n\n  v0.1.1 通过 GUI 监听 Agent 轨迹文件。\n  run / attach / shell 尚未接通常驻采集。\n  模式：observe / 本地处理\n",
+            clens_types::DEV_VERSION
+        ),
+        UiLanguage::TraditionalChinese => format!(
+            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住腳印，不改寫旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  從這裡開始\n    clens --version          查看安裝版本\n    clens doctor --json      安裝與 daemon 診斷\n    clens-gui                開啟監聽精靈\n\n  v0.1.1 透過 GUI 監聽 Agent 軌跡檔案。\n  run / attach / shell 尚未接通常駐擷取。\n  模式：observe / 本機處理\n",
             clens_types::DEV_VERSION
         ),
     }
