@@ -1,5 +1,15 @@
-﻿# 变更记录
+# 变更记录
 
+## 0.1.2 Beta（2026-10-26）
+
+- 新增可选 `clens-assist` 辅助层，支持证据约束的 Jev、OpenAI-compatible、Anthropic-compatible 和本机 Ollama 分析。
+- GUI 新增“设置”工作区，支持提供方、Endpoint、模型、隐私、超时、时间线、语言和主题配置。
+- 新增 `clens assist` 与 `clens why --assist`；API key 只留在进程内存，不写入 `settings.json`。
+- 强制引用可追溯：模型 finding 必须引用提交因果链中真实存在的断言 ID 或事件序列。
+- 加固 Endpoint/header 校验、Windows 设置重复保存、相对路径脱敏和 CLI 人类可读输出。
+- 保持 observe-only 边界：Jev 决策、干预层、ETW 生产闭环和 ARM64 运行态仍不在本 beta 的已验证范围内。
+- 应维护者要求，本版本以 GitHub 普通 Release（非预发布）发布；`v1.0.0` 之前的软件仍属于测试软件。构建机没有 Azure Trusted Signing 凭据，上传的 x64 安装包明确标记为未签名。
+- [完整 v0.1.2 说明](v0.1.2.md)。
 ## 0.1.1 Beta（2026-10-25）
 
 - 重做 Fluent 监听向导，提供 20 项按内容识别的运行时模板。

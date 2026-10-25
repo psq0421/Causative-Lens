@@ -1,4 +1,4 @@
-# v0.1.1 observe 监听契约
+# v0.1.2 observe 监听契约
 
 - monitor.templates：无参数，返回数据化模板。模板 ID 与显示语言分离。
 - monitor.probe：{runtime_id,folder,include_profile}，目录必须存在；返回实际 roots、候选文件、识别格式和导出指导。

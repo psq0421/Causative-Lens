@@ -1,4 +1,4 @@
-﻿# CausativeLens 文档目录
+# CausativeLens 文档目录
 
 > **文档也是第二个可执行文件：它告诉下一位工程师证据藏在哪里。**
 
@@ -6,7 +6,7 @@
 
 ## 指南
 
-- [v0.1.1 新手监听向导](guide/monitoring-start_CN.md)
+- [v0.1.2 新手监听向导](guide/monitoring-start_CN.md)
 - [快速入门](快速入门.md) · [Quick start](quick-start.md) · [快速入門](快速入門.md)
 - [17 款产品接入教程：已验证步骤与当前缺口](guide/runtime-integration_CN.md) · [English](guide/runtime-integration.md)
 - [贡献指南](guide/contributing_CN.md) · [Contributing](guide/contributing.md) · [貢獻指南](guide/contributing_TW.md)
@@ -41,6 +41,7 @@
 ## 发布与附录
 
 - [发布闸门 G7](release/g7-release-gate_CN.md)
+- [v0.1.2 发布说明](release/v0.1.2.md) · [English](release/v0.1.2.en-US.md) · [繁體中文](release/v0.1.2_TW.md)
 - [变更记录](release/CHANGELOG_CN.md)
 - [字段参考](reference/field-reference_CN.md)
 - [兼容性矩阵](reference/compatibility_CN.md)

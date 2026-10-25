@@ -1,4 +1,4 @@
-﻿# CausativeLens v0.1.0 G7 安装与发布线
+# CausativeLens v0.1.2 G7 安装与发布线
 
 安装器页面支持 English、简体中文和繁體中文；同一签名 payload 只按架构区分。完整双语/三语文档入口见 [docs/README.md](../docs/README.md)。
 
@@ -8,10 +8,10 @@
 
 ```powershell
 # 构建 release 二进制、校验 CLI/GUI 同版本并生成 payload-manifest.json
-powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.1.0
+powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.1.2
 
 # 编译 NSIS；无 Trusted Signing 时只生成 -dev 包
-powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.0
+powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.2
 ```
 
 输出为 `dist/CausativeLens-setup-x64-dev.exe`。正式 Release 文件名只能是 `CausativeLens-setup-x64.exe`，必须在签名验证通过后构建：
@@ -21,11 +21,11 @@ $env:AZURE_TRUSTED_SIGNING_DLIB = 'C:\path\Azure.CodeSigning.Dlib.dll'
 $env:AZURE_TRUSTED_SIGNING_METADATA = 'C:\path\metadata.json'
 powershell -ExecutionPolicy Bypass -File installer/sign-release.ps1 -Files installer/payload/clens.exe,installer/payload/clens-gui.exe,installer/payload/clens-daemon.exe,installer/payload/clens-capture.exe -OutputStatus dist/payload-signature-status.json
 # 只有 payload-signature-status.json 为 Trusted Signing 时才能生成正式文件
-powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.0 -Release -Signed
+powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.2 -Release -Signed
 powershell -ExecutionPolicy Bypass -File installer/sign-release.ps1 -Files dist/CausativeLens-setup-x64.exe
 ```
 
-也可使用 `installer/build-release.ps1 -Arch x64 -Version 0.1.0` 一次执行 payload 签名、正式包编译、安装器签名和 E2E；任一步没有 Trusted Signing 都会阻断。
+也可使用 `installer/build-release.ps1 -Arch x64 -Version 0.1.2` 一次执行 payload 签名、正式包编译、安装器签名和 E2E；任一步没有 Trusted Signing 都会阻断。
 
 `sign-release.ps1` 使用 Azure Trusted Signing 的 `signtool /dlib /dmdf` 流程并运行 `signtool verify /pa /all`。缺少配置时只生成 `signature-status.json` 的 `unsigned-dev` 状态，正式构建会阻断；禁止用自签名证书代替公开发布签名。Azure 的租户、客户端和 secret 由 Trusted Signing DLib 的受支持凭据链提供，不写入仓库。
 

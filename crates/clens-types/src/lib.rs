@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 pub const PRODUCT_NAME: &str = "CausativeLens";
 pub const PRODUCT_SLUG: &str = "causativelens";
-pub const DEV_VERSION: &str = "0.1.1";
+pub const DEV_VERSION: &str = "0.1.2";
 pub const RPC_PIPE_NAME: &str = r"\\.\pipe\causativelens-rpc";
 pub const ETW_SESSION_PREFIX: &str = "CausativeLens_";
 pub const CAPTURE_CONTROL_MAX_BYTES: usize = 4096;

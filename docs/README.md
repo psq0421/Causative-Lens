@@ -1,4 +1,4 @@
-﻿# CausativeLens documentation
+# CausativeLens documentation
 
 > **Documentation is a second executable: it tells the next engineer where the evidence lives.**
 
@@ -6,7 +6,7 @@ Choose a language: [English (US)](README.md) · [简体中文](README_CN.md) · 
 
 ## Guides
 
-- [v0.1.1 first observation](guide/monitoring-start.md)
+- [v0.1.2 first observation](guide/monitoring-start.md)
 - [Quick start](quick-start.md) · [快速入门](快速入门.md) · [快速入門](快速入門.md)
 - [17-product integration tutorial: verified steps and current gaps](guide/runtime-integration.md) · [简体中文](guide/runtime-integration_CN.md)
 - [Contributing](guide/contributing.md) · [贡献指南](guide/contributing_CN.md) · [貢獻指南](guide/contributing_TW.md)
@@ -41,6 +41,7 @@ Choose a language: [English (US)](README.md) · [简体中文](README_CN.md) · 
 ## Release and appendices
 
 - [Release gate G7](release/g7-release-gate.md)
+- [v0.1.2 release notes](release/v0.1.2.en-US.md) · [简体中文](release/v0.1.2.md) · [繁體中文](release/v0.1.2_TW.md)
 - [Changelog](release/CHANGELOG.md)
 - [Field reference](reference/field-reference.md)
 - [Compatibility matrix](reference/compatibility.md)

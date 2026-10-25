@@ -1,12 +1,12 @@
-﻿# Quick start
+# Quick start
 
-For the working v0.1.1 flow, see [your first observation](guide/monitoring-start.md): software → folder → probe → listen → filter/details/export. The legacy interface plans below describe v0.1.0.
+For the working v0.1.2 flow, see [your first observation](guide/monitoring-start.md): software → folder → probe → listen → filter/details/export. The legacy interface plans below describe v0.1.2.
 
 > **A session is a letter from a running program to your future self. CausativeLens keeps the envelope, the timestamp, and the fingerprints.**
 
-This guide introduces the intended v0.1.0 observe-only workflow on Windows.
+This guide introduces the intended v0.1.2 observe-only workflow on Windows.
 
-> **Beta status, checked 2026-10-25:** `run/attach` currently return `offline`; vendor log conversion/automatic tail and the complete capture/persistence pipeline are not connected. `open` currently creates an in-memory session rather than loading the supplied file. The commands below include intended interfaces, not proof of a complete workflow. Use the [17-product integration tutorial](guide/runtime-integration.md) for verified steps, raw-log acquisition and a manual RPC walkthrough.
+> **Beta status, checked 2026-10-26:** `run/attach` currently return `offline`; vendor log conversion/automatic tail and the complete capture/persistence pipeline are not connected. `open` currently creates an in-memory session rather than loading the supplied file. The commands below include intended interfaces, not proof of a complete workflow. Use the [17-product integration tutorial](guide/runtime-integration.md) for verified steps, raw-log acquisition and a manual RPC walkthrough.
 
 ## 1. Install
 
@@ -54,7 +54,7 @@ The intended attach interface for an existing process tree is also not connected
 clens attach --pid 12345
 ```
 
-The v0.1.0 boundary is read-only. CausativeLens records metadata and traces; it does not inject, modify, enforce, or make decisions for the agent.
+The v0.1.2 boundary is read-only. CausativeLens records metadata and traces; it does not inject, modify, enforce, or make decisions for the agent.
 
 ## 4. Watch the session
 
@@ -115,7 +115,7 @@ clens replay --baseline baseline.json --branch branch.json
 clens replay --baseline baseline.json --branch branch.json --json
 ```
 
-v0.1.0 replay is a read-only overlay. It compares observed runs and highlights differences; counterfactual simulation remains a v2 idea.
+v0.1.2 replay is a read-only overlay. It compares observed runs and highlights differences; counterfactual simulation remains a v2 idea.
 
 ## 8. Harness logs and adapters
 
@@ -138,8 +138,8 @@ Harness input uses append-only JSONL. Generic parsing, tail, quarantine and sche
 cargo fmt --all -- --check
 cargo test --workspace --offline
 cargo clippy --workspace --all-targets --offline -- -D warnings
-powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.1.0
-powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.0
+powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.1.2
+powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.2
 powershell -ExecutionPolicy Bypass -File installer/installer-e2e.ps1 -InstallerPath dist/CausativeLens-setup-x64-dev.exe
 ```
 

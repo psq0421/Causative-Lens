@@ -1,4 +1,4 @@
-# v0.1.1：第一次監聽
+# v0.1.2：第一次監聽
 
 [English](monitoring-start.md) · [簡體中文](monitoring-start_CN.md) · [繁體中文](monitoring-start_TW.md)
 

@@ -1,4 +1,4 @@
-# v0.1.1: your first observation
+# v0.1.2: your first observation
 
 [English](monitoring-start.md) · [简体中文](monitoring-start_CN.md) · [繁體中文](monitoring-start_TW.md)
 

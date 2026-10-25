@@ -1,4 +1,4 @@
-﻿# CausativeLens 文件目錄
+# CausativeLens 文件目錄
 
 > **文件也是第二個可執行檔：它告訴下一位工程師證據藏在哪裡。**
 
@@ -6,7 +6,7 @@
 
 ## 指南
 
-- [v0.1.1 初次監聽](guide/monitoring-start_TW.md)
+- [v0.1.2 初次監聽](guide/monitoring-start_TW.md)
 - [快速入門](快速入門.md) · [Quick start](quick-start.md) · [简体中文](快速入门.md)
 - [17 款產品接入教程與目前限制（简体中文）](guide/runtime-integration_CN.md) · [English](guide/runtime-integration.md)
 - [貢獻指南](guide/contributing_TW.md) · [Contributing](guide/contributing.md) · [贡献指南](guide/contributing_CN.md)
@@ -37,6 +37,7 @@
 ## 發行與附錄
 
 - [發行閘門 G7](release/g7-release-gate_TW.md)
+- [v0.1.2 發行說明](release/v0.1.2_TW.md) · [English](release/v0.1.2.en-US.md) · [简体中文](release/v0.1.2.md)
 - [變更記錄](release/CHANGELOG_TW.md)
 - [欄位參考](reference/field-reference_TW.md)
 - [相容性矩陣](reference/compatibility_TW.md)

@@ -1,7 +1,7 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [string]$Output,
-    [string]$Version = '0.1.1'
+    [string]$Version = '0.1.2'
 )
 $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrEmpty($Output)) { $Output = Join-Path $PSScriptRoot '..\\dist\\causativelens-sbom.spdx.json' }

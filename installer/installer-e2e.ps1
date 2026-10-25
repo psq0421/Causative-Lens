@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)][string]$InstallerPath,
-    [string]$Version = '0.1.1',
+    [string]$Version = '0.1.2',
     [string]$InstallDir = (Join-Path $env:TEMP ('CausativeLens E2E ' + [char]0x4e2d + [char]0x6587 + ' ' + [Guid]::NewGuid().ToString('N'))),
     [switch]$SkipGuiColdStart
 )

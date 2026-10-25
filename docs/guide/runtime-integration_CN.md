@@ -1,6 +1,6 @@
 # 17 款 Agent / CLI 接入 CausativeLens：详细教程
 
-v0.1.1 已增加原生日志归一/目录监听与 GUI，见[新手监听向导](monitoring-start_CN.md)。本文保留 v0.1.0 审计结论和厂商轨迹获取方法；旧版缺口表不描述 v0.1.1 的全部现状。
+v0.1.2 已增加原生日志归一/目录监听与 GUI，见[新手监听向导](monitoring-start_CN.md)。本文保留 v0.1.0 审计结论和厂商轨迹获取方法；旧版缺口表不描述 v0.1.2 的全部现状。
 
 语言：[简体中文](runtime-integration_CN.md) · [English (US)](runtime-integration.md)
 

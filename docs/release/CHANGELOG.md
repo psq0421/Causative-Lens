@@ -1,5 +1,15 @@
-﻿# Changelog
+# Changelog
 
+## 0.1.2 Beta (2026-10-26)
+
+- Added the optional `clens-assist` layer for evidence-grounded Jev, OpenAI-compatible, Anthropic-compatible, and local Ollama analysis.
+- Added the GUI Settings workspace with provider, endpoint, model, privacy, timeout, timeline, language, and theme controls.
+- Added `clens assist` and `clens why --assist`; API keys stay in process memory and never enter `settings.json`.
+- Enforced citation grounding: findings must reference assertion IDs or event sequences present in the submitted causal chain.
+- Hardened endpoint and header validation, repeated Windows settings saves, relative-path redaction, and human-readable CLI output.
+- Kept the observe-only boundary: Jev decision, intervention, ETW production closure, and ARM64 runtime remain outside this beta's verified scope.
+- This GitHub release is intentionally published as a normal (non-prerelease) release at the maintainer's request, while the product remains test software before `v1.0.0`; the uploaded x64 installer is explicitly unsigned because Azure Trusted Signing was unavailable on the build host.
+- [Full v0.1.2 notes](v0.1.2.md).
 ## 0.1.1 Beta (2026-10-25)
 
 - Rebuilt the Fluent listening wizard and added 20 content-based runtime template choices.
