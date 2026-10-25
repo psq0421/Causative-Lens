@@ -1,0 +1,54 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>CausativeLens</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="title-bar">
+        <div class="brand-mark" aria-label="CausativeLens">CL</div>
+        <div class="brand-copy"><strong>CausativeLens</strong><span id="mode-badge">observe</span></div>
+        <div class="title-spacer"></div>
+        <label class="language-picker" for="language-select" data-i18n="language.label">语言</label>
+        <select id="language-select" aria-label="Language">
+          <option value="zh-CN">简体中文</option>
+          <option value="zh-TW">繁體中文</option>
+          <option value="en-US">English (US)</option>
+        </select>
+        <button class="icon-button" id="theme-toggle" data-i18n-aria-label="theme.toggle">◐</button>
+        <button class="icon-button" id="help-button" data-i18n-aria-label="help.open">?</button>
+      </header>
+      <div class="workspace-layout">
+        <nav class="side-nav" data-i18n-aria-label="workspace.nav">
+          <button class="nav-item active" data-workspace="sessions"><span>▦</span><span data-i18n="nav.sessions">Sessions</span></button>
+          <button class="nav-item" data-workspace="timeline"><span>⌁</span><span data-i18n="nav.timeline">Timeline</span></button>
+          <button class="nav-item" data-workspace="graph"><span>◈</span><span data-i18n="nav.graph">Graph</span></button>
+          <button class="nav-item" data-workspace="replay"><span>↻</span><span data-i18n="nav.replay">Replay / Query</span></button>
+          <div class="nav-bottom"><button class="nav-item" data-workspace="about"><span>ⓘ</span><span data-i18n="nav.about">About</span></button></div>
+        </nav>
+        <main class="main-content">
+          <section class="command-strip">
+            <button class="command-search" id="command-search"><span>⌕</span><span data-i18n="command.search">搜索命令或会话</span><kbd>Ctrl K</kbd></button>
+            <div class="connection-pill" id="connection-status"><i></i><span data-i18n="connection.disconnected">daemon 未连接</span></div>
+          </section>
+          <section class="workspace" id="workspace-sessions" data-panel="sessions">
+            <div class="workspace-heading"><div><p class="eyebrow">WORKSPACE 01</p><h1 data-i18n="nav.sessions">Sessions</h1><p class="subhead" data-i18n="sessions.subtitle">选择一个观测会话，查看它的实时状态。</p></div><button class="primary-button" id="open-session" data-i18n="sessions.open">打开会话</button></div>
+            <div class="summary-grid"><article class="summary-card"><span data-i18n="summary.mode">当前模式</span><strong>observe</strong><small data-i18n="summary.readonly">只读观测</small></article><article class="summary-card"><span data-i18n="summary.capture">采集状态</span><strong id="session-health" data-i18n="connection.waiting">等待连接</strong><small data-i18n="summary.sources">ETW 与 Harness</small></article><article class="summary-card"><span data-i18n="summary.compatibility">兼容性</span><strong>Tier3 fallback</strong><small data-i18n="summary.unknown">未知版本不阻断</small></article></div>
+            <div class="empty-state"><div class="empty-icon">◎</div><h2 data-i18n="sessions.empty.title">还没有打开会话</h2><p data-i18n="sessions.empty.body">使用 CLI 的 <code>clens run</code> 或点击上面的按钮开始一次只读观测。</p><button class="secondary-button" id="copy-run" data-i18n="sessions.copyRun">复制 clens run 命令</button></div>
+          </section>
+          <section class="workspace hidden" id="workspace-timeline" data-panel="timeline"><div class="workspace-heading"><div><p class="eyebrow">WORKSPACE 02</p><h1 data-i18n="nav.timeline">Timeline</h1><p class="subhead" data-i18n="timeline.subtitle">断言和系统事件按水位线增量到达。</p></div><span class="metric-badge" data-i18n="timeline.virtualized">窗口化渲染</span></div><div class="toolbar"><button class="chip active" data-i18n="filter.all">全部</button><button class="chip" data-i18n="filter.assertions">断言</button><button class="chip" data-i18n="filter.files">文件</button><button class="chip" data-i18n="filter.network">网络</button><span class="toolbar-spacer"></span><span class="muted" data-i18n="timeline.domLimit">DOM 上限 500</span></div><div class="timeline-list" id="timeline-list" role="log" aria-live="polite"></div></section>
+          <section class="workspace hidden" id="workspace-graph" data-panel="graph"><div class="workspace-heading"><div><p class="eyebrow">WORKSPACE 03</p><h1 data-i18n="nav.graph">Graph</h1><p class="subhead" data-i18n="graph.subtitle">履约关系和因果断点。</p></div><span class="metric-badge">graph.delta &lt; 8ms</span></div><div class="graph-frame"><canvas id="graph-canvas" data-i18n-aria-label="graph.canvas"></canvas><div class="canvas-overlay" data-i18n="graph.waiting">等待 graph.delta</div></div></section>
+          <section class="workspace hidden" id="workspace-replay" data-panel="replay"><div class="workspace-heading"><div><p class="eyebrow">WORKSPACE 04</p><h1 data-i18n="nav.replay">Replay / Query</h1><p class="subhead" data-i18n="replay.subtitle">回放、why 查询和只读导出。</p></div><button class="secondary-button" id="copy-why" data-i18n="replay.copyWhy">复制对应 CLI 命令</button></div><div class="query-card"><label for="query-input" data-i18n="query.label">受限查询</label><div class="query-row"><input id="query-input" data-i18n-placeholder="query.placeholder" placeholder="例如：为什么它修改了 config.yaml？" /><button class="primary-button" id="run-query" data-i18n="query.run">查询</button></div><p class="hint" data-i18n="query.hint">查询使用确定性模板；无法识别时会提示对应的 <code>clens why --path</code> 命令。</p></div></section>
+          <section class="workspace hidden" id="workspace-about" data-panel="about"><div class="workspace-heading"><div><p class="eyebrow">CAUSATIVELENS</p><h1 data-i18n="nav.about">About</h1><p class="subhead" data-i18n="about.subtitle">实时、只读、可回放的因果观测。</p></div></div><div class="about-card"><strong>CausativeLens <span id="version-label">0.1.0</span></strong><p data-i18n="about.architecture">一 daemon，两前端。GUI 通过 causativelens-rpc 访问 daemon，不复制引擎逻辑。</p><p class="muted" data-i18n="about.compatibility">兼容性：未知 Agent 版本使用 Tier3 fallback，不强制阻断。</p></div></section>
+        </main>
+      </div>
+    </div>
+    <div class="command-palette hidden" id="command-palette" role="dialog" aria-modal="true" data-i18n-aria-label="palette.label"><div class="palette-card"><input id="palette-input" data-i18n-placeholder="palette.placeholder" placeholder="输入命令…" autofocus /><div class="palette-items"><button data-action="sessions" data-i18n="palette.sessions">打开 Sessions</button><button data-action="timeline" data-i18n="palette.timeline">打开 Timeline</button><button data-action="graph" data-i18n="palette.graph">打开 Graph</button><button data-action="replay" data-i18n="palette.replay">打开 Replay / Query</button></div></div></div>
+    <script src="./i18n.js" type="module"></script>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>

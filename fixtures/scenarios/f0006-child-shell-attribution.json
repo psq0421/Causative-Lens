@@ -1,0 +1,1 @@
+{"scenario":"f0006-child-shell-attribution","schema_v":1,"assertion":{"id":6,"op":"read","target":"config.yaml"},"candidate":{"event_seq":6,"event_ts_ms":6000,"center_ts_ms":1000,"process_distance":0,"semantic":0,"path":0},"expected":"unrelated"}

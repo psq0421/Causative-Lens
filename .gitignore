@@ -1,0 +1,30 @@
+# Rust build output
+/target/
+
+# Local installer and release output
+/dist/
+/installer/payload/*
+!/installer/payload/.gitkeep
+
+# Local logs, reports, and editor state
+*.log
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Signing material and local credentials
+*.pfx
+*.p12
+*.pem
+*.key
+*.secret
+*.credentials.json
+/.env
+/.env.*
+!/.env.example
+
+# Keep generated user/session data out of the repository
+*.cllens
+*.clspool
+/.causativelens/

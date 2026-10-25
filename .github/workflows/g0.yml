@@ -1,0 +1,22 @@
+name: g0
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+      - run: cargo install --locked cargo-deny cargo-audit
+      - shell: pwsh
+        run: ./scripts/dependency_audit.ps1
+      - shell: pwsh
+        run: ./scripts/guid_self_check.ps1
