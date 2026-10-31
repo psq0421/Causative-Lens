@@ -1,7 +1,7 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory=$true)][string]$InstallerPath,
-    [string]$Version = '0.1.2',
+    [string]$Version = '0.2.0',
     [string]$InstallDir = (Join-Path $env:TEMP ('CausativeLens E2E ' + [char]0x4e2d + [char]0x6587 + ' ' + [Guid]::NewGuid().ToString('N'))),
     [switch]$SkipGuiColdStart
 )
@@ -104,3 +104,4 @@ try {
     $report | ConvertTo-Json -Depth 12 | Set-Content -Encoding utf8 $out
     Write-Host "Installer E2E $($report.status). Report: $out"
 }
+

@@ -288,6 +288,9 @@ pub fn analyze(
     let prompt = build_prompt(&config, request)?;
     let response_text = match config.provider {
         AssistantProvider::Anthropic => request_anthropic(&config, api_key, &prompt)?,
+        AssistantProvider::Jev if config.endpoint.starts_with("local://") => {
+            request_jev_local(&config, &prompt)?
+        }
         AssistantProvider::Jev
         | AssistantProvider::OpenAiCompatible
         | AssistantProvider::Ollama => request_openai_compatible(&config, api_key, &prompt)?,
@@ -362,6 +365,56 @@ fn request_openai_compatible(
         })
         .ok_or_else(|| AssistError::Response("missing choices[0].message.content".to_owned()))
         .map(ToOwned::to_owned)
+}
+
+/// Run a user-selected local Jev-compatible process. The process receives a
+/// single JSON request on stdin and returns either the AssistantResult JSON or
+/// a plain-text answer on stdout. This keeps the CLI useful on an air-gapped
+/// workstation without embedding a model runtime in the daemon.
+fn request_jev_local(config: &AssistantConfig, prompt: &str) -> Result<String, AssistError> {
+    let command = std::env::var("CAUSATIVELENS_JEV_COMMAND").map_err(|_| {
+        AssistError::Configuration(
+            "local Jev requires CAUSATIVELENS_JEV_COMMAND (a local model runner)".to_owned(),
+        )
+    })?;
+    if command.trim().is_empty() || command.chars().any(char::is_control) {
+        return Err(AssistError::Configuration(
+            "CAUSATIVELENS_JEV_COMMAND is invalid".to_owned(),
+        ));
+    }
+    let request = json!({"model": config.model, "prompt": prompt, "max_tokens": config.max_tokens, "temperature": config.temperature});
+    let mut child = if cfg!(windows) {
+        let mut command_line = Command::new("cmd.exe");
+        command_line.args(["/D", "/S", "/C", &command]);
+        command_line
+    } else {
+        let mut command_line = Command::new("sh");
+        command_line.args(["-lc", &command]);
+        command_line
+    }
+    .stdin(Stdio::piped())
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()
+    .map_err(|error| AssistError::Request(format!("local Jev runner failed to start: {error}")))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        let bytes = serde_json::to_vec(&request)
+            .map_err(|error| AssistError::Request(error.to_string()))?;
+        stdin
+            .write_all(&bytes)
+            .map_err(|error| AssistError::Request(error.to_string()))?;
+    }
+    let output = child
+        .wait_with_output()
+        .map_err(|error| AssistError::Request(error.to_string()))?;
+    if !output.status.success() {
+        return Err(AssistError::Request(format!(
+            "local Jev runner exited {}: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr).trim()
+        )));
+    }
+    String::from_utf8(output.stdout).map_err(|error| AssistError::Response(error.to_string()))
 }
 
 fn request_anthropic(
@@ -521,6 +574,9 @@ fn parse_result(
 
 fn valid_endpoint(endpoint: &str) -> bool {
     let lower = endpoint.trim().to_ascii_lowercase();
+    if lower == "local://jev" {
+        return true;
+    }
     let Some(authority) = lower
         .strip_prefix("https://")
         .or_else(|| lower.strip_prefix("http://"))

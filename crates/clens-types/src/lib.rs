@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 pub const PRODUCT_NAME: &str = "CausativeLens";
 pub const PRODUCT_SLUG: &str = "causativelens";
-pub const DEV_VERSION: &str = "0.1.2";
+pub const DEV_VERSION: &str = "0.2.0";
 pub const RPC_PIPE_NAME: &str = r"\\.\pipe\causativelens-rpc";
 pub const ETW_SESSION_PREFIX: &str = "CausativeLens_";
 pub const CAPTURE_CONTROL_MAX_BYTES: usize = 4096;
@@ -48,7 +48,7 @@ impl UiLanguage {
     pub const fn display_name(self) -> &'static str {
         match self {
             Self::EnglishUs => "English (US)",
-            Self::SimplifiedChinese => "简体中文",
+            Self::SimplifiedChinese => "\u{7b80}\u{4f53}\u{4e2d}\u{6587}",
             Self::TraditionalChinese => "繁體中文",
         }
     }
@@ -57,9 +57,12 @@ impl UiLanguage {
     pub fn parse(value: &str) -> Option<Self> {
         match value.trim().to_ascii_lowercase().as_str() {
             "en" | "en-us" | "english" | "english-us" => Some(Self::EnglishUs),
-            "zh" | "zh-cn" | "zh-hans" | "sc" | "simplified" | "简体中文" => {
-                Some(Self::SimplifiedChinese)
-            }
+            "zh"
+            | "zh-cn"
+            | "zh-hans"
+            | "sc"
+            | "simplified"
+            | "\u{7b80}\u{4f53}\u{4e2d}\u{6587}" => Some(Self::SimplifiedChinese),
             "zh-tw" | "zh-hk" | "zh-hant" | "tc" | "traditional" | "繁體中文" => {
                 Some(Self::TraditionalChinese)
             }

@@ -1,5 +1,15 @@
 # 变更记录
 
+## 0.2.0 测试版（2026-10-31）
+
+- 接入真实 Windows ETW：四条 `OpenTraceW`/`ProcessTrace` 消费线程、TDH 类型字段读取、路径驻留、FileObject→Path 跟踪、明确的丢失计数，以及由 daemon 通过 UAC 启动的提权 `clens-capture.exe` 主机。
+- 新增 WAL SQLite 履约图持久化、FTS5 事件索引、`.cllens` 离线重开和持久化五段式 `why` 查询链。
+- 新增 Criterion 对齐与 spool 恢复基线：本机 x64 release 每候选 6.22–6.27 ns，恢复 10,000 帧为 835.38–840.16 µs。
+- 新增 GUI 双泳道 Canvas 履约图和确定性的 Causal Weave 候选排序算法。
+- 保持 observe-only：Jev 只能分析已引用的证据，不能改 Verdict、启动进程或执行干预。
+- 按要求以普通 GitHub Release 发布；`v1.0.0` 之前均为测试版。Azure Trusted Signing 尚未配置，x64 安装器明确标记为 `unsigned-dev`；ARM64 继续顺延。
+- [完整简体中文说明](v0.2.0.md) · [English](v0.2.0.en-US.md)。
+
 ## 0.1.2 Beta（2026-10-26）
 
 - 新增可选 `clens-assist` 辅助层，支持证据约束的 Jev、OpenAI-compatible、Anthropic-compatible 和本机 Ollama 分析。

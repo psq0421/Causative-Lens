@@ -1,7 +1,7 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet('x64','arm64')][string]$Arch = 'x64',
-    [string]$Version = '0.1.2',
+    [string]$Version = '0.2.0',
     [string]$OutputDir,
     [switch]$SkipBuild
 )
@@ -60,6 +60,7 @@ $manifest = [ordered]@{
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 (Join-Path $OutputDir 'payload-manifest.json')
 Write-Host "Payload ready: $OutputDir ($Arch, $Version)"
+
 
 
 

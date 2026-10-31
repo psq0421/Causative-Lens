@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 Beta (2026-10-31)
+
+- Added the real Windows ETW bridge: four `OpenTraceW`/`ProcessTrace` consumers, TDH typed property reads, path interning, FileObject-to-path tracking, bounded loss accounting, and an elevated `clens-capture.exe` host launched by the daemon through UAC.
+- Added WAL-backed SQLite fulfilment persistence, FTS5 event indexing, offline `.cllens` reopen, and persisted five-part `why` chains.
+- Added Criterion baselines for alignment and spool recovery: 6.22–6.27 ns per candidate and 835.38–840.16 µs for 10,000-frame recovery on the local x64 release host.
+- Added the GUI dual-lane Canvas graph and the deterministic Causal Weave tie-breaker.
+- Kept the observe-only boundary: Jev may analyse cited evidence but cannot change verdicts, start processes, or execute interventions.
+- Published as a normal GitHub release because pre-`v1.0.0` builds are test software; the x64 installer is explicitly `unsigned-dev` until Azure Trusted Signing is configured. ARM64 remains deferred.
+- [Full English notes](v0.2.0.en-US.md) · [简体中文](v0.2.0.md).
+
 ## 0.1.2 Beta (2026-10-26)
 
 - Added the optional `clens-assist` layer for evidence-grounded Jev, OpenAI-compatible, Anthropic-compatible, and local Ollama analysis.

@@ -1,4 +1,4 @@
-﻿pub const GRAPH_SCHEMA_V1: &str = r#"PRAGMA journal_mode=WAL;
+pub const GRAPH_SCHEMA_V1: &str = r#"PRAGMA journal_mode=WAL;
 PRAGMA synchronous=NORMAL;
 PRAGMA page_size=8192;
 PRAGMA mmap_size=268435456;
@@ -260,5 +260,72 @@ mod tests {
         let scan = recover_file(&path).expect("recover file");
         assert_eq!(scan.frames, vec![frame]);
         let _ = std::fs::remove_file(path);
+    }
+}
+mod session;
+pub use session::{SessionStore, StoreError};
+
+#[cfg(test)]
+mod session_tests {
+    use super::*;
+    use clens_types::{
+        Assertion, AssertionOp, EventPayload, Expectation, HarnessSpan, IoMode, SysEvent, SysKind,
+        TargetPattern,
+    };
+
+    #[test]
+    fn sqlite_wal_persists_graph_and_why_chain() {
+        let path =
+            std::env::temp_dir().join(format!("causativelens-v020-{}.cllens", std::process::id()));
+        let store = SessionStore::open(&path).expect("store");
+        let assertion = Assertion {
+            schema_v: 1,
+            id: 7,
+            span: HarnessSpan {
+                step: 2,
+                byte_start: 0,
+                byte_end: 10,
+            },
+            op: AssertionOp::Read,
+            target: TargetPattern::Path("config.yaml".into()),
+            io_mode: IoMode::ReadOnly,
+            expect: Expectation::MustHappen,
+            order_key: None,
+            confidence: 1.0,
+            raw_quote: "read config.yaml".into(),
+        };
+        store
+            .insert_assertion(&assertion, "rule")
+            .expect("assertion");
+        let event = SysEvent {
+            schema_v: 1,
+            seq: 9,
+            ts_qpc: 100,
+            pid: 10,
+            tid: 11,
+            kind: SysKind::FileRead,
+            is_rundown: false,
+            payload: EventPayload::File {
+                path: 1,
+                desired_access: 0,
+                io_len: Some(4),
+                write_attrs: false,
+            },
+        };
+        store
+            .insert_event(&event, Some("config.yaml"))
+            .expect("event");
+        store
+            .insert_match(7, 9, 0.9, &serde_json::json!({"path":1.0}), "Fulfilled")
+            .expect("evidence");
+        let result = store.query_why("config.yaml").expect("why");
+        assert_eq!(result["chain"]["trigger_assertion"]["id"], 7);
+        assert_eq!(result["chain"]["evidence_events"][0]["event_seq"], 9);
+        drop(store);
+        let reopened = SessionStore::open(&path).expect("reopen");
+        assert_eq!(reopened.counts().expect("counts"), (1, 1, 1));
+        let _ = std::fs::remove_file(&path);
+        let _ = std::fs::remove_file(path.with_extension("cllens-wal"));
+        let _ = std::fs::remove_file(path.with_extension("cllens-shm"));
     }
 }

@@ -90,7 +90,11 @@ pub fn dispatch_live(args: &[String]) -> CliOutput {
     }
     let method = match command {
         "doctor" => Some("hello"),
-        "open" => Some("session.open"),
+        "open" => Some(if flag_value(&args, "--session").is_some() {
+            "session.open_existing"
+        } else {
+            "session.open"
+        }),
         "timeline" | "watch" => Some("session.status"),
         "why" => Some("query.why"),
         _ => None,
@@ -100,6 +104,8 @@ pub fn dispatch_live(args: &[String]) -> CliOutput {
     };
     let params = if method == "hello" {
         serde_json::json!({"protocol_version": 1, "mode": "observe"})
+    } else if command == "open" && method == "session.open_existing" {
+        serde_json::json!({"path": flag_value(&args, "--session").unwrap_or_default()})
     } else if command == "why" {
         let parsed = parse_restricted_query(&query_argument(&args));
         let path = parsed
@@ -609,15 +615,15 @@ fn usage_for(language: UiLanguage) -> String {
     let commands = OBSERVE_COMMANDS.join("|");
     match language {
         UiLanguage::EnglishUs => format!(
-            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  Keep the footprints. Leave the journey untouched.\n\n  Usage: clens <{commands}>\n         [--json] [--lang en-US|zh-CN|zh-TW]\n\n  Start here\n    clens --version          Show the installed version\n    clens doctor --json      Installation / daemon diagnostics\n    clens why --assist ...   Optional evidence-grounded model analysis\n    clens assist --help      Configure the optional assistant\n    clens-gui                Open the listening wizard\n\n  v0.1.2 listens to agent trace files through the GUI.\n  run / attach / shell are not connected to live capture yet.\n  Mode: observe / local processing\n",
+            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  Keep the footprints. Leave the journey untouched.\n\n  Usage: clens <{commands}>\n         [--json] [--lang en-US|zh-CN|zh-TW]\n\n  Start here\n    clens --version          Show the installed version\n    clens doctor --json      Installation / daemon diagnostics\n    clens why --assist ...   Optional evidence-grounded model analysis\n    clens assist --help      Configure the optional assistant\n    clens-gui                Open the listening wizard\n\n  v0.2.0 listens to agent trace files through the GUI.\n  run / attach / shell are not connected to live capture yet.\n  Mode: observe / local processing\n",
             clens_types::DEV_VERSION
         ),
         UiLanguage::SimplifiedChinese => format!(
-            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住脚印，不改写旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  从这里开始\n    clens --version          查看安装版本\n    clens doctor --json      安装与 daemon 诊断\n    clens why --assist ...   可选的证据辅助分析\n    clens assist --help     配置可选辅助层\n    clens-gui                打开监听向导\n\n  v0.1.2 通过 GUI 监听 Agent 轨迹文件。\n  run / attach / shell 尚未接通实时采集。\n  模式：observe / 本地处理\n",
+            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住脚印，不改写旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  从这里开始\n    clens --version          查看安装版本\n    clens doctor --json      安装与 daemon 诊断\n    clens why --assist ...   可选的证据辅助分析\n    clens assist --help     配置可选辅助层\n    clens-gui                打开监听向导\n\n  v0.2.0 通过 GUI 监听 Agent 轨迹文件。\n  run / attach / shell 尚未接通实时采集。\n  模式：observe / 本地处理\n",
             clens_types::DEV_VERSION
         ),
         UiLanguage::TraditionalChinese => format!(
-            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住腳印，不改寫旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  從這裡開始\n    clens --version          查看安裝版本\n    clens doctor --json      安裝與 daemon 診斷\n    clens why --assist ...   可選的證據輔助分析\n    clens assist --help     設定可選輔助層\n    clens-gui                開啟監聽精靈\n\n  v0.1.2 透過 GUI 監聽 Agent 軌跡檔案。\n  run / attach / shell 尚未接通即時擷取。\n  模式：observe / 本機處理\n",
+            "\n  CausativeLens {} / BETA\n  ----------------------------------------\n  留住腳印，不改寫旅程。\n\n  用法：clens <{commands}>\n        [--json] [--lang en-US|zh-CN|zh-TW]\n\n  從這裡開始\n    clens --version          查看安裝版本\n    clens doctor --json      安裝與 daemon 診斷\n    clens why --assist ...   可選的證據輔助分析\n    clens assist --help     設定可選輔助層\n    clens-gui                開啟監聽精靈\n\n  v0.2.0 透過 GUI 監聽 Agent 軌跡檔案。\n  run / attach / shell 尚未接通即時擷取。\n  模式：observe / 本機處理\n",
             clens_types::DEV_VERSION
         ),
     }

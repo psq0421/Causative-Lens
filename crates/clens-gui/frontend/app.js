@@ -109,7 +109,7 @@ $('#browse-folder').addEventListener('click', async () => {
   } catch (error) { report(error); }
 });
 function parameters() {
-  return { runtime_id: selected, folder: $('#monitor-folder').value.trim(), include_profile: $('#include-profile').checked, read_existing: $('#read-existing').checked };
+  return { runtime_id: selected, folder: $('#monitor-folder').value.trim(), include_profile: $('#include-profile').checked, read_existing: $('#read-existing').checked, capture_etw: true };
 }
 async function busy(button, work) {
   const key = button.dataset.i18n;
@@ -310,17 +310,48 @@ function drawGraph() {
   canvas.width = rect.width * ratio; canvas.height = rect.height * ratio;
   const ctx = canvas.getContext('2d'); ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
   ctx.clearRect(0, 0, rect.width, rect.height);
-  const assertions = rows.filter(row => row.category === 'assertions').slice(-60);
-  $('#graph-empty').classList.toggle('hidden', Boolean(assertions.length));
+  const assertions = rows.filter(row => row.category === 'assertions').slice(-180);
+  const events = rows.filter(row => ['files', 'network', 'other'].includes(row.category)).slice(-500);
+  $('#graph-empty').classList.toggle('hidden', Boolean(assertions.length || events.length));
   const styles = getComputedStyle(document.documentElement);
+  const text = styles.getPropertyValue('--text');
+  const muted = styles.getPropertyValue('--muted');
+  const line = styles.getPropertyValue('--line');
+  const accent = styles.getPropertyValue('--accent');
+  const lane = Math.max(120, rect.height / 2);
+  ctx.strokeStyle = line; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, lane); ctx.lineTo(rect.width, lane); ctx.stroke();
+  ctx.fillStyle = muted; ctx.font = '10px Segoe UI';
+  ctx.fillText('ASSERTIONS', 18, 20); ctx.fillText('SYSTEM EVENTS', 18, lane + 20);
+  const column = Math.max(170, (rect.width - 40) / Math.min(6, Math.max(1, Math.ceil(Math.sqrt(assertions.length || 1)))));
+  const assertionPoints = new Map();
   assertions.forEach((row, index) => {
-    const x = 45 + (index % 3) * Math.max(180, (rect.width - 90) / 3), y = 45 + Math.floor(index / 3) * 64;
-    if (y > rect.height) return;
-    ctx.fillStyle = styles.getPropertyValue('--accent'); ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = styles.getPropertyValue('--text'); ctx.font = '11px Segoe UI';
-    ctx.fillText(row.kind + ' · ' + row.target.slice(-24), x + 14, y + 4);
-    ctx.fillStyle = styles.getPropertyValue('--muted'); ctx.font = '10px Segoe UI'; ctx.fillText(t('state.unobserved'), x + 14, y + 20);
+    const col = index % 6, rowIndex = Math.floor(index / 6);
+    const x = 36 + col * column, y = 48 + (rowIndex % Math.max(1, Math.floor((lane - 70) / 48))) * 48;
+    if (x > rect.width - 20 || y > lane - 12) return;
+    assertionPoints.set(row.seq, { x, y });
+    ctx.fillStyle = accent; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = text; ctx.font = '11px Segoe UI'; ctx.fillText(row.kind + ' · ' + (row.target || '').slice(-20), x + 12, y + 4);
+    ctx.fillStyle = muted; ctx.font = '10px Segoe UI'; ctx.fillText(row.state || 'unobserved', x + 12, y + 19);
   });
+  events.forEach((row, index) => {
+    const col = index % 6, rowIndex = Math.floor(index / 6);
+    const x = 36 + col * column, y = lane + 48 + (rowIndex % Math.max(1, Math.floor((rect.height - lane - 70) / 48))) * 48;
+    if (x > rect.width - 20 || y > rect.height - 12) return;
+    ctx.fillStyle = row.category === 'network' ? '#8b5cf6' : row.category === 'files' ? '#0f6cbd' : muted;
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = text; ctx.font = '11px Segoe UI'; ctx.fillText(row.kind + ' · ' + (row.target || '').slice(-20), x + 12, y + 4);
+    ctx.fillStyle = muted; ctx.font = '10px Segoe UI'; ctx.fillText(row.state || 'observed', x + 12, y + 19);
+  });
+  // Evidence lines are drawn from the matching sequence when the daemon has
+  // supplied it; otherwise the lane remains honest and unlinked.
+  ctx.strokeStyle = accent; ctx.globalAlpha = .28; ctx.lineWidth = 1;
+  rows.filter(row => row.source === 'evidence' && assertionPoints.has(row.assertion_seq)).forEach(row => {
+    const from = assertionPoints.get(row.assertion_seq); const to = events.find(event => event.seq === row.event_seq);
+    if (!from || !to) return;
+    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, lane + 48); ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
 }
 addEventListener('resize', () => { renderTimeline(); drawGraph(); });
 $('#query-form').addEventListener('submit', event => {

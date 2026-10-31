@@ -1,16 +1,6 @@
-# v0.1.2 observe 监听契约
+﻿# v0.2.0 observe 鐩戝惉濂戠害
 
-- monitor.templates：无参数，返回数据化模板。模板 ID 与显示语言分离。
-- monitor.probe：{runtime_id,folder,include_profile}，目录必须存在；返回实际 roots、候选文件、识别格式和导出指导。
-- monitor.start：同 probe 参数，加 read_existing（默认 true）；返回 session_id。读取线程不执行 Agent 命令、不改厂商配置。
-- monitor.status：{session_id}，返回运行状态、已读/识别/拒绝行、轮换/截断、丢弃及最近错误；没有真实 ETW 时 capture_connected=false。
-- monitor.events：{session_id,after,limit}，after 为 Timeline 单调游标；响应有界，返回 rows/next_cursor/has_more/retained_from，读取不消费其他前端的数据。
-- monitor.stop：{session_id}，停止读文件，保留内存 Timeline 供查询；可重复停止。
-- monitor.list：返回 daemon 中仍存在的监听会话，GUI 重开可以选择。
-- session.close：同时停止该会话 reader，再释放内存。
-
-分类 assertions/files/network/other。来源 assertion/agent/system 分离；file 工具请求只代表客户端意图，不是 ETW FileRead。tool_result 不重复产断言。每条 Timeline 数据带 seq、ts_utc_ms、category、source、kind、target、text、state。
-
-格式入口：规范 Harness JSONL、Anthropic 消息、OpenAI tool_calls、Codex exec/session、OpenClaw transcript、Hermes sessions 导出/observer、一般结构化 tool 事件。Markdown/普通文本仅为文本，SQLite 二进制不以文本解码。JSON 解析失败或未知对象计数可见。fixtures 标记 synthetic，不宣称全厂商最近三个月真实版本兼容。
-
-安全：扫描只读、不追符号链接/重解析点、不读凭据文件；扫描用户目录需要 UI 显式勾选。完整提示词/工具轨迹可能敏感，GUI 说明本地处理。监听不自动开启 UAC、不宣称本机 ETW 能看到云/WSL 内部操作。
+- monitor.templates锛氭棤鍙傛暟锛岃繑鍥炴暟鎹寲妯℃澘銆傛ā鏉?ID 涓庢樉绀鸿瑷€鍒嗙銆?- monitor.probe锛歿runtime_id,folder,include_profile}锛岀洰褰曞繀椤诲瓨鍦紱杩斿洖瀹為檯 roots銆佸€欓€夋枃浠躲€佽瘑鍒牸寮忓拰瀵煎嚭鎸囧銆?- monitor.start锛氬悓 probe 鍙傛暟锛屽姞 read_existing锛堥粯璁?true锛夛紱杩斿洖 session_id銆傝鍙栫嚎绋嬩笉鎵ц Agent 鍛戒护銆佷笉鏀瑰巶鍟嗛厤缃€?- monitor.status锛歿session_id}锛岃繑鍥炶繍琛岀姸鎬併€佸凡璇?璇嗗埆/鎷掔粷琛屻€佽疆鎹?鎴柇銆佷涪寮冨強鏈€杩戦敊璇紱娌℃湁鐪熷疄 ETW 鏃?capture_connected=false銆?- monitor.events锛歿session_id,after,limit}锛宎fter 涓?Timeline 鍗曡皟娓告爣锛涘搷搴旀湁鐣岋紝杩斿洖 rows/next_cursor/has_more/retained_from锛岃鍙栦笉娑堣垂鍏朵粬鍓嶇鐨勬暟鎹€?- monitor.stop锛歿session_id}锛屽仠姝㈣鏂囦欢锛屼繚鐣欏唴瀛?Timeline 渚涙煡璇紱鍙噸澶嶅仠姝€?- monitor.list锛氳繑鍥?daemon 涓粛瀛樺湪鐨勭洃鍚細璇濓紝GUI 閲嶅紑鍙互閫夋嫨銆?- session.close锛氬悓鏃跺仠姝㈣浼氳瘽 reader锛屽啀閲婃斁鍐呭瓨銆?
+鍒嗙被 assertions/files/network/other銆傛潵婧?assertion/agent/system 鍒嗙锛沠ile 宸ュ叿璇锋眰鍙唬琛ㄥ鎴风鎰忓浘锛屼笉鏄?ETW FileRead銆倀ool_result 涓嶉噸澶嶄骇鏂█銆傛瘡鏉?Timeline 鏁版嵁甯?seq銆乼s_utc_ms銆乧ategory銆乻ource銆乲ind銆乼arget銆乼ext銆乻tate銆?
+鏍煎紡鍏ュ彛锛氳鑼?Harness JSONL銆丄nthropic 娑堟伅銆丱penAI tool_calls銆丆odex exec/session銆丱penClaw transcript銆丠ermes sessions 瀵煎嚭/observer銆佷竴鑸粨鏋勫寲 tool 浜嬩欢銆侻arkdown/鏅€氭枃鏈粎涓烘枃鏈紝SQLite 浜岃繘鍒朵笉浠ユ枃鏈В鐮併€侸SON 瑙ｆ瀽澶辫触鎴栨湭鐭ュ璞¤鏁板彲瑙併€俧ixtures 鏍囪 synthetic锛屼笉瀹ｇО鍏ㄥ巶鍟嗘渶杩戜笁涓湀鐪熷疄鐗堟湰鍏煎銆?
+瀹夊叏锛氭壂鎻忓彧璇汇€佷笉杩界鍙烽摼鎺?閲嶈В鏋愮偣銆佷笉璇诲嚟鎹枃浠讹紱鎵弿鐢ㄦ埛鐩綍闇€瑕?UI 鏄惧紡鍕鹃€夈€傚畬鏁存彁绀鸿瘝/宸ュ叿杞ㄨ抗鍙兘鏁忔劅锛孏UI 璇存槑鏈湴澶勭悊銆傜洃鍚笉鑷姩寮€鍚?UAC銆佷笉瀹ｇО鏈満 ETW 鑳界湅鍒颁簯/WSL 鍐呴儴鎿嶄綔銆?

@@ -1,6 +1,6 @@
-# v0.1.2: your first observation
+﻿# v0.2.0: your first observation
 
-[English](monitoring-start.md) · [简体中文](monitoring-start_CN.md) · [繁體中文](monitoring-start_TW.md)
+[English](monitoring-start.md) 路 [绠€浣撲腑鏂嘳(monitoring-start_CN.md) 路 [绻侀珨涓枃](monitoring-start_TW.md)
 
 > Leave a thread for the program to find its way home. Traces first; evidence follows.
 
@@ -10,7 +10,7 @@ Run the x64 `-dev` test installer. Installation is per-user. Open the desktop sh
 
 ## Three steps
 
-1. Open **Listen → Choose your software**, select OpenClaw (for example), then Next.
+1. Open **Listen 鈫?Choose your software**, select OpenClaw (for example), then Next.
 2. **Browse** to its project, log or installation folder. Profile scanning may include other sessions: uncheck it if unwanted. Uncheck existing traces to read only new content.
 3. **Check folder**, review actual roots/files, then **Start listening**. An empty folder can wait for logs; perform a small agent task or follow the export guidance below.
 
@@ -30,7 +30,7 @@ There are 20 choices: 17 products with two WorkBuddy channels, plus DeepSeek and
 | Manus | Select task activity exports. A cloud task report is not a per-tool trace or local system evidence. |
 | AutoGPT | Select the actual worker's task logs. Verify Classic, Platform and container variants separately. |
 | CodeBuddy | Read CodeBuddy stream-json or session exports while keeping normal permissions. |
-| WorkBuddy（国内版） | Select CN task activity exports. This is independent of the international client; a same-name CLI is not assumed. |
+| WorkBuddy锛堝浗鍐呯増锛?| Select CN task activity exports. This is independent of the international client; a same-name CLI is not assumed. |
 | WorkBuddy International | Select international task activity exports; keep CN sessions separate. |
 | Trae Agent / TRAE CLI | Select executor traces; IDE, open-source Agent and CLI protocols may differ. |
 | Aider | Read chat-history Markdown or structured exports. Prose is never converted into observed file writes. |
@@ -41,7 +41,7 @@ There are 20 choices: 17 products with two WorkBuddy channels, plus DeepSeek and
 | GitHub Copilot CLI | Select standalone Copilot session events. Legacy gh, IDE and cloud agents need independent verification. |
 | Cursor CLI | Select Cursor agent stream-json output, not an editor launcher. |
 | DeepSeek Harness | Select normalized Harness JSONL or structured tool traces. |
-| Others / 其他软件 | Auto-detect Harness, OpenAI/Anthropic tools and text. Unknown JSON is counted, not presented as a successful adapter. |
+| Others / 鍏朵粬杞欢 | Auto-detect Harness, OpenAI/Anthropic tools and text. Unknown JSON is counted, not presented as a successful adapter. |
 
 ## Timeline, details and queries
 
@@ -68,4 +68,5 @@ Choose an accessible folder for directory errors. Export logs or explicitly incl
 
 Scanning is bounded to depth 6, 8192 entries, 128 files, 256KiB per file/turn, 256KiB JSON snapshots, a 4096-event queue and a 5000-row view. Limits/skipped bytes are visible in health reporting.
 
-[Detailed vendor trace preparation (v0.1.0 capability audit)](runtime-integration.md) · [Changelog](../release/CHANGELOG.md)
+[Detailed vendor trace preparation (v0.1.0 capability audit)](runtime-integration.md) 路 [Changelog](../release/CHANGELOG.md)
+

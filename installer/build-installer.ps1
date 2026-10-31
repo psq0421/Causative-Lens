@@ -1,7 +1,7 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet('x64','arm64')][string]$Arch = 'x64',
-    [string]$Version = '0.1.2',
+    [string]$Version = '0.2.0',
     [string]$PayloadDir,
     [string]$DistDir,
     [switch]$Release,
@@ -40,6 +40,7 @@ if ($item.Length -ge 25MB) { throw "Installer is $($item.Length) bytes; the 25MB
 $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $out
 $hash | ConvertTo-Json | Set-Content -Encoding utf8 ($out + '.sha256.json')
 Write-Host "Installer ready: $out ($($item.Length) bytes)"
+
 
 
 

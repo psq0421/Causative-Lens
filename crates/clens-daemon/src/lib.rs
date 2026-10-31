@@ -7,11 +7,13 @@ use clens_core::{
 };
 use clens_harnessd::monitor::LiveMonitor;
 use clens_harnessd::{extract_rule_assertions, AssertionPool, TailHealth};
-use clens_storage::SpoolFrame;
+use clens_storage::{SessionStore, SpoolFrame};
 use clens_types::{
     HarnessEvent, HelloRequest, HelloResponse, Mode, RpcError, SessionTicket, SysEvent,
     DEV_VERSION, PRODUCT_NAME, RPC_MAX_MESSAGE_BYTES, RPC_METHOD_MAX_BYTES,
 };
+#[cfg(windows)]
+use monitoring::CaptureBridge;
 use monitoring::{category_of, target_of, TimelineBuffer, TimelineRow};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -43,11 +45,16 @@ pub fn daemon_thread_plan(physical_cpus: usize) -> DaemonThreadPlan {
 pub enum ObservationError {
     #[error("session serialization failed: {0}")]
     Serialization(String),
+    #[error("session persistence failed: {0}")]
+    Storage(String),
 }
 
 #[derive(Debug)]
 pub struct ObservationSession {
+    store: Option<SessionStore>,
     monitor: Option<LiveMonitor>,
+    #[cfg(windows)]
+    capture: Option<CaptureBridge>,
     timeline: TimelineBuffer,
     seen_harness: HashSet<(u64, u64)>,
     pub capture_health: CaptureHealth,
@@ -71,7 +78,10 @@ pub struct ObservationSession {
 impl Default for ObservationSession {
     fn default() -> Self {
         Self {
+            store: None,
             monitor: None,
+            #[cfg(windows)]
+            capture: None,
             timeline: TimelineBuffer::default(),
             seen_harness: HashSet::new(),
             capture_health: CaptureHealth::default(),
@@ -95,6 +105,13 @@ impl Default for ObservationSession {
 }
 
 impl ObservationSession {
+    fn with_store(store: SessionStore) -> Self {
+        Self {
+            store: Some(store),
+            ..Self::default()
+        }
+    }
+
     pub fn ingest_harness_event(&mut self, event: &HarnessEvent) -> Option<u64> {
         if !self
             .seen_harness
@@ -130,6 +147,7 @@ impl ObservationSession {
         }
         let mut first_id = None;
         for assertion in assertions {
+            let assertion_for_store = assertion.clone();
             let target = match &assertion.target {
                 clens_types::TargetPattern::Path(p) => p.to_string(),
                 other => format!("{other:?}"),
@@ -145,6 +163,12 @@ impl ObservationSession {
                 state: "unobserved".into(),
             });
             let id = self.assertion_pool.insert(assertion);
+            if let Some(store) = &self.store {
+                store
+                    .insert_assertion(&assertion_for_store, "rule")
+                    .map_err(|error| ObservationError::Storage(error.to_string()))
+                    .ok();
+            }
             if let Some(candidate) = self.assertion_pool.values().find(|value| value.id == id) {
                 if let clens_types::TargetPattern::Path(path) = &candidate.target {
                     self.path_index
@@ -216,6 +240,17 @@ impl ObservationSession {
             state: "observed".into(),
         });
         self.events.insert(event.seq, event.clone());
+        if let Some(store) = &self.store {
+            let path = match &event.payload {
+                clens_types::EventPayload::File { path, .. } => {
+                    self.path_table.get(path).map(String::as_str)
+                }
+                _ => None,
+            };
+            store
+                .insert_event(event, path)
+                .map_err(|error| ObservationError::Storage(error.to_string()))?;
+        }
         match (&event.kind, &event.payload) {
             (clens_types::SysKind::ProcStart, clens_types::EventPayload::Proc { ppid, .. }) => {
                 self.process_tree.observe_start(event.pid, *ppid);
@@ -236,6 +271,7 @@ impl ObservationSession {
             .map_or(event.ts_qpc as i64, |(anchor, qpc_per_second)| {
                 anchor.qpc_to_utc_ms(event.ts_qpc, qpc_per_second)
             });
+        let match_start = self.matches.len();
         for assertion in self.assertion_pool.values() {
             let timed = TimedAssertion {
                 assertion,
@@ -291,6 +327,24 @@ impl ObservationSession {
                 self.matches.push(matched);
             }
         }
+        if let Some(store) = &self.store {
+            for matched in &self.matches[match_start..] {
+                let components = serde_json::to_value(matched.score)
+                    .map_err(|error| ObservationError::Serialization(error.to_string()))?;
+                store
+                    .insert_match(
+                        matched.assertion_id,
+                        matched.event_seq,
+                        matched.score.total,
+                        &components,
+                        &format!("{:?}", matched.state),
+                    )
+                    .map_err(|error| ObservationError::Storage(error.to_string()))?;
+            }
+            store
+                .commit()
+                .map_err(|error| ObservationError::Storage(error.to_string()))?;
+        }
         Ok(())
     }
 
@@ -304,6 +358,13 @@ impl ObservationSession {
     /// sections; this method keeps the RPC contract usable before a session is
     /// flushed to disk.
     pub fn query_why(&self, path: &str) -> Value {
+        if self.assertion_pool.values().next().is_none() {
+            if let Some(store) = &self.store {
+                if let Ok(result) = store.query_why(path) {
+                    return result;
+                }
+            }
+        }
         let needle = path.replace('\\', "/").to_ascii_lowercase();
         let indexed_ids = self.path_index.get(&needle).cloned().unwrap_or_default();
         let assertion = if indexed_ids.is_empty() {
@@ -475,8 +536,10 @@ impl DaemonState {
             }
             "session.open" => {
                 let session_id = Uuid::new_v4();
-                self.sessions
-                    .insert(session_id, ObservationSession::default());
+                let session = session_store(session_id)
+                    .map(ObservationSession::with_store)
+                    .unwrap_or_default();
+                self.sessions.insert(session_id, session);
                 RpcResponse::ok(
                     request.id,
                     json!(SessionTicket {
@@ -484,6 +547,31 @@ impl DaemonState {
                         mode: Mode::Observe
                     }),
                 )
+            }
+            "session.open_existing" => {
+                let Some(path) = request.params.get("path").and_then(Value::as_str) else {
+                    return RpcResponse::error(
+                        request.id,
+                        RpcError::InvalidParams("path".to_owned()),
+                    );
+                };
+                match SessionStore::open(path) {
+                    Ok(store) => {
+                        let session_id = Uuid::new_v4();
+                        self.sessions
+                            .insert(session_id, ObservationSession::with_store(store));
+                        RpcResponse::ok(
+                            request.id,
+                            json!(SessionTicket {
+                                session_id,
+                                mode: Mode::Observe
+                            }),
+                        )
+                    }
+                    Err(error) => {
+                        RpcResponse::error(request.id, RpcError::InvalidParams(error.to_string()))
+                    }
+                }
             }
             "session.status" => {
                 let id = session_id(&request.params);
@@ -604,6 +692,15 @@ impl DaemonState {
     pub fn session_mut(&mut self, session_id: Uuid) -> Option<&mut ObservationSession> {
         self.sessions.get_mut(&session_id)
     }
+}
+
+fn session_store(session_id: Uuid) -> Option<SessionStore> {
+    let root = std::env::var_os("LOCALAPPDATA")
+        .map(std::path::PathBuf::from)
+        .or_else(|| std::env::current_dir().ok())?
+        .join("causativelens")
+        .join("sessions");
+    SessionStore::open(root.join(format!("{session_id}.cllens"))).ok()
 }
 
 fn assistant_analysis(params: &Value) -> Result<Value, String> {

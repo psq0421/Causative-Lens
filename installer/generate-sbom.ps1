@@ -1,7 +1,7 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$Output,
-    [string]$Version = '0.1.2'
+    [string]$Version = '0.2.0'
 )
 $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrEmpty($Output)) { $Output = Join-Path $PSScriptRoot '..\\dist\\causativelens-sbom.spdx.json' }
@@ -29,5 +29,6 @@ $doc = [ordered]@{
 New-Item -ItemType Directory -Force (Split-Path -Parent $Output) | Out-Null
 $doc | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 $Output
 Write-Host "SBOM written: $Output"
+
 
 

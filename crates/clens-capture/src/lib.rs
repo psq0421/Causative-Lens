@@ -2,6 +2,10 @@ use clens_types::{
     decode_capture_control, CaptureControlMessage, CaptureHeartbeat, Endpoint, EventPayload,
     NetProto, SysEvent, SysKind, ETW_SESSION_PREFIX,
 };
+#[cfg(windows)]
+mod realtime;
+#[cfg(windows)]
+pub use realtime::{ManualEventDecoder, RawEtwRecord, RealtimeConsumer};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -318,11 +322,13 @@ pub fn cleanup_stale_sessions() -> std::io::Result<()> {
     for session in sessions() {
         let _ = stop_session(&session.session_name);
         let output = delete_session(&session.session_name)?;
-        if !output.status.success()
-            && !String::from_utf8_lossy(&output.stderr)
-                .to_ascii_lowercase()
-                .contains("not found")
-        {
+        let diagnostics = format!(
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .to_ascii_lowercase();
+        if !output.status.success() && !diagnostics.contains("not found") {
             return Err(std::io::Error::other(format!(
                 "stale ETW session {} could not be removed: {}",
                 session.session_name,
@@ -519,6 +525,8 @@ pub fn session_name(suffix: &str) -> String {
 pub struct CaptureLifecycle {
     active_sessions: Vec<String>,
     rundown_requested: bool,
+    #[cfg(windows)]
+    realtime_consumers: Vec<RealtimeConsumer>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -598,6 +606,58 @@ impl CaptureLifecycle {
         Ok(())
     }
 
+    /// Attach one ProcessTrace consumer to every realtime logger. Session
+    /// creation remains separate so a caller can diagnose provider startup
+    /// without consuming, while production callers use this immediately after
+    /// `start_all` and receive decoded EVENT_RECORDs through the bounded queue.
+    #[cfg(windows)]
+    pub fn start_realtime_consumers(
+        &mut self,
+        sender: std::sync::mpsc::SyncSender<RawEtwRecord>,
+    ) -> std::io::Result<()> {
+        if self.active_sessions.len() != PROVIDERS.len() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::NotConnected,
+                "ETW sessions are not active",
+            ));
+        }
+        for session in sessions() {
+            match RealtimeConsumer::spawn(
+                &session.session_name,
+                session.logical_name,
+                sender.clone(),
+            ) {
+                Ok(consumer) => self.realtime_consumers.push(consumer),
+                Err(error) => {
+                    self.stop_realtime_consumers();
+                    return Err(std::io::Error::other(error));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Start the four sessions and return the bounded decoded-record stream.
+    /// The caller owns the receiver and must drain it continuously; backpressure
+    /// is explicit so ETW loss is reported instead of hidden.
+    #[cfg(windows)]
+    pub fn start_live(&mut self) -> std::io::Result<std::sync::mpsc::Receiver<RawEtwRecord>> {
+        let (sender, receiver) = std::sync::mpsc::sync_channel(8_192);
+        self.start_all()?;
+        if let Err(error) = self.start_realtime_consumers(sender) {
+            let _ = self.stop_all();
+            return Err(error);
+        }
+        Ok(receiver)
+    }
+
+    #[cfg(windows)]
+    fn stop_realtime_consumers(&mut self) {
+        for consumer in self.realtime_consumers.drain(..) {
+            let _ = consumer.stop();
+        }
+    }
+
     #[cfg(not(windows))]
     pub fn start_all(&mut self) -> std::io::Result<()> {
         Err(std::io::Error::new(
@@ -608,6 +668,8 @@ impl CaptureLifecycle {
 
     pub fn stop_all(&mut self) -> std::io::Result<()> {
         let mut first_error = None;
+        #[cfg(windows)]
+        self.stop_realtime_consumers();
         #[cfg(windows)]
         for name in self.active_sessions.drain(..).rev() {
             match stop_session(&name) {

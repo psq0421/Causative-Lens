@@ -1,7 +1,7 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet('x64','arm64')][string]$Arch = 'x64',
-    [string]$Version = '0.1.2'
+    [string]$Version = '0.2.0'
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -31,4 +31,5 @@ Run-Script (Join-Path $PSScriptRoot 'sign-release.ps1') @('-Files',$installer)
 if ($LASTEXITCODE -ne 0) { throw 'Final installer signature verification failed.' }
 Run-Script (Join-Path $PSScriptRoot 'installer-e2e.ps1') @('-InstallerPath',$installer)
 Write-Host "Formal G7 release candidate ready: $installer"
+
 

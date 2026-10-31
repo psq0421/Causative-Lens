@@ -862,6 +862,44 @@ pub fn reverse_attribute(assertion: &Assertion, event: &SysEvent) -> bool {
     }
 }
 
+/// Causal Weave is CausativeLens' deterministic tie-breaker for evidence that
+/// scores similarly under the four blueprint dimensions. It rewards a
+/// candidate that closes an assertion's temporal braid (the nearest prior
+/// and next observed facts), then applies an explicit contradiction penalty.
+/// The function is pure, replayable, and does not inspect the filesystem.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CausalWeaveInput {
+    pub base_score: f32,
+    pub prior_gap_ms: Option<i64>,
+    pub next_gap_ms: Option<i64>,
+    pub contradiction: bool,
+    pub process_distance: u8,
+}
+
+pub fn causal_weave_score(input: CausalWeaveInput) -> f32 {
+    let braid = match (input.prior_gap_ms, input.next_gap_ms) {
+        (Some(prior), Some(next)) => {
+            let span = prior
+                .unsigned_abs()
+                .saturating_add(next.unsigned_abs())
+                .max(1) as f32;
+            (1.0 - (prior.unsigned_abs().max(next.unsigned_abs()) as f32 / span)).clamp(0.0, 1.0)
+        }
+        (Some(gap), None) | (None, Some(gap)) => {
+            (1.0 - gap.unsigned_abs() as f32 / 2_000.0).clamp(0.0, 1.0) * 0.5
+        }
+        (None, None) => 0.0,
+    };
+    let lineage = if input.process_distance == u8::MAX {
+        0.0
+    } else {
+        1.0 / (f32::from(input.process_distance) + 1.0)
+    };
+    let contradiction_penalty = if input.contradiction { 0.25 } else { 0.0 };
+    (0.72 * input.base_score + 0.18 * braid + 0.10 * lineage - contradiction_penalty)
+        .clamp(0.0, 1.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1225,5 +1263,40 @@ mod tests {
         .expect("child process is attributable");
         assert_eq!(attribution.state, AttributionState::Anchored);
         assert_eq!(attribution.pid, 20);
+    }
+
+    #[test]
+    fn causal_weave_is_bounded_monotonic_and_penalizes_contradiction() {
+        let clean = causal_weave_score(CausalWeaveInput {
+            base_score: 0.9,
+            prior_gap_ms: Some(10),
+            next_gap_ms: Some(10),
+            contradiction: false,
+            process_distance: 0,
+        });
+        let deviated = causal_weave_score(CausalWeaveInput {
+            base_score: 0.9,
+            prior_gap_ms: Some(10),
+            next_gap_ms: Some(10),
+            contradiction: true,
+            process_distance: 0,
+        });
+        assert!((0.0..=1.0).contains(&clean));
+        assert!(clean > deviated);
+        assert!(
+            causal_weave_score(CausalWeaveInput {
+                base_score: 0.8,
+                prior_gap_ms: None,
+                next_gap_ms: None,
+                contradiction: false,
+                process_distance: 0
+            }) >= causal_weave_score(CausalWeaveInput {
+                base_score: 0.4,
+                prior_gap_ms: None,
+                next_gap_ms: None,
+                contradiction: false,
+                process_distance: 0
+            })
+        );
     }
 }

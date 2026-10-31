@@ -2,9 +2,9 @@
 
 > **A small lantern for the moments when software stops being obvious.**
 
-CausativeLens v0.1.2 Beta is a read-only agent trace observer for Windows. Choose your agent, pick a folder, review detection, and start listening. One `clens-daemon` owns the data; `clens.exe` and `clens-gui.exe` communicate through `causativelens-rpc`.
+CausativeLens v0.2.0 Beta is a read-only agent trace observer for Windows. Choose your agent, pick a folder, review detection, and start listening. One `clens-daemon` owns the data; `clens.exe` and `clens-gui.exe` communicate through `causativelens-rpc`.
 
-> **Current Beta limitation (2026-10-25):** the GUI now tails supported local traces, with 20 template choices covering the requested 17 products, both WorkBuddy channels, DeepSeek and Others. These are content-based integrations, not certification of every vendor version. The complete ETW/persistence pipeline is still unconnected; agent reports are labelled separately from kernel evidence. `run/attach` remain offline. Start with [your first observation](docs/guide/monitoring-start.md).
+> **Evidence boundary:** v0.2.0 adds the real `OpenTraceW`/`ProcessTrace` capture bridge and WAL-backed fulfilment graph. An elevated capture host is required for kernel facts; without it the UI reports evidence as unavailable. Start with the [v0.2.0 plan](docs/plan/v0.2.0.en-US.md).
 
 ## Languages
 
@@ -31,19 +31,19 @@ Language switch: [简体中文](README_CN.md) · [繁體中文](README_TW.md) ·
 cargo fmt --all -- --check
 cargo test --workspace --offline
 cargo clippy --workspace --all-targets --offline -- -D warnings
-powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.1.2
-powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.1.2
+powershell -ExecutionPolicy Bypass -File installer/build-payload.ps1 -Arch x64 -Version 0.2.0
+powershell -ExecutionPolicy Bypass -File installer/build-installer.ps1 -Arch x64 -Version 0.2.0
 ```
 
 The installer is per-user and puts GUI, CLI, daemon, and capture in one directory. Only `clens-capture.exe` requests UAC. The GUI is the default desktop entry point and `.cllens` files open in it.
 
 ## Observe-only boundary
 
-v0.1.0 deliberately observes. Intervention and decision commands are reserved for v0.2.0; the corresponding tables remain forward-compatible but have no write path. This boundary is a promise: the lens may explain a footprint, but it never reaches into the program it is watching.
+v0.2.0 deliberately observes. Intervention and decision commands remain unregistered; the corresponding tables are forward-compatible but have no write path. This boundary is a promise: the lens may explain a footprint, but it never reaches into the program it is watching.
 
 ## Release safety
 
-Every version before `v1.0.0` is beta/test software. The `v0.1.2` GitHub release is a normal non-prerelease test release; its x64 local package is unsigned until Azure Trusted Signing credentials are supplied. ARM64 is deferred. A stable release requires signed x64 and ARM64 installers, SBOM, deterministic-build evidence, and the installer E2E matrix. See [the release gate](docs/release/g7-release-gate.md).
+Every version before `v1.0.0` is beta/test software. The `v0.2.0` GitHub release is a normal non-prerelease test release; its x64 local package is unsigned until Azure Trusted Signing credentials are supplied. ARM64 is deferred. A stable release requires signed x64 and ARM64 installers, SBOM, deterministic-build evidence, and the installer E2E matrix. See the [v0.2.0 release notes](docs/release/v0.2.0.en-US.md).
 
 ## Contributing
 
