@@ -45,6 +45,7 @@ Choose a language: [English (US)](README.md) · [简体中文](README_CN.md) · 
 - [Changelog](release/CHANGELOG.md)
 - [v0.2.0 release notes](release/v0.2.0.en-US.md) · [简体中文](release/v0.2.0.md)
 - [v0.2.0 evidence-loop plan](plan/v0.2.0.en-US.md) · [简体中文](plan/v0.2.0.md)
+- [Capture fast-path refinement](plan/capture-fast-path.en-US.md) · [采集快路径细化](plan/capture-fast-path.md)
 - [Field reference](reference/field-reference.md)
 - [Compatibility matrix](reference/compatibility.md)
 - [Appendix map](reference/appendices.md)

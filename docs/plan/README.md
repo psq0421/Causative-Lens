@@ -56,5 +56,11 @@
 - [ipc-security-12.md](../spec/ipc-security-12.md)：ring、控制协议、ACL、心跳与攻击面契约
 - [ipc-security-audit-12.md](ipc-security-audit-12.md)：第 12 章 IPC/安全复检记录
 - `task-cards/T0087-IPC与安全模型复检.md`：G5 IPC 与安全接线任务卡
+- `capture-fast-path.md`：mmap ring、手工布局快路径与 TDH oracle 细化方案
+- `task-cards/T0202-capture-ring-and-fast-path.md`：采集数据面与解码快路径重构任务卡
+- `task-cards/T0203-process-file-fast-decoder.md`：Process/File 手工布局快路径
+- `task-cards/T0204-registry-network-fast-decoder.md`：Registry/Network 手工布局与 TDH oracle
+- `task-cards/T0205-daemon-ring-reader.md`：daemon ring reader 与兼容桥
+- `task-cards/T0206-capture-benchmark-release-gate.md`：采集端到端基准与发布门
 
 

@@ -36,6 +36,7 @@
 - [测试方案](plan/test-plan.md)
 - [开放问题](plan/open-questions.md)
 - [任务卡](plan/task-cards/README.md)
+- [采集层 mmap ring 与手工解码快路径](plan/capture-fast-path.md) · [English](plan/capture-fast-path.en-US.md)
 - [闸门报告](plan/gate-reports/)
 
 ## 发布与附录
