@@ -8,6 +8,7 @@ let sessionId = null, rows = [], cursor = 0, filter = 'all', follow = true;
 let connected = false, monitorStatus = null, timer = 0, epoch = 0, detail = null, lastFocus = null;
 let bannerKey = null, lastUpdated = null;
 let assistantConfig = null, assistantApiKey = '', lastQueryResult = null;
+let sessionCatalog = [], replayIndex = 0, replayTimer = 0, selectedBreakpoint = null;
 const language = () => document.documentElement.lang;
 const nameOf = id => templates.find(item => item.id === id)?.name || id;
 function setTheme(theme) {
@@ -40,6 +41,7 @@ function connectionState(value) {
   connected = value;
   $('#connection-status').classList.toggle('connected', value);
   $('#connection-status span').textContent = t(value ? 'connection.connected' : 'connection.offline');
+  const daemon = $('#footer-daemon'); if (daemon) daemon.textContent = `daemon · ${value ? 'connected' : 'offline'}`;
 }
 function showWorkspace(name) {
   workspace = name;
@@ -51,10 +53,14 @@ function showWorkspace(name) {
   $('#page-label').textContent = t('nav.' + name);
   if (name === 'timeline') renderTimeline();
   if (name === 'graph') requestAnimationFrame(drawGraph);
+  if (name === 'sessions') renderSessions();
+  if (name === 'investigate') renderInvestigate();
+  if (name === 'replay') renderReplay();
+  if (name === 'compare') renderCompare();
 }
 $$('.nav-item[data-workspace]').forEach(item => item.addEventListener('click', () => showWorkspace(item.dataset.workspace)));
 $('.brand').addEventListener('click', event => { event.preventDefault(); showWorkspace('sessions'); });
-$('#timeline-setup').addEventListener('click', () => showWorkspace('sessions'));
+$('#timeline-setup').addEventListener('click', () => showWorkspace('observe'));
 $('#view-timeline').addEventListener('click', () => showWorkspace('timeline'));
 
 function goStep(next) {
@@ -176,6 +182,16 @@ function renderMonitor() {
   $('#start-monitor').disabled = Boolean(health.running);
   $('#timeline-source').textContent = nameOf(status.runtime_id) + ' · ' + t('monitor.scope');
   $('#footer-state').textContent = t(!health.running ? 'monitor.stopped' : health.recognized ? 'monitor.listening' : 'monitor.waiting');
+  const capture = $('#footer-capture'); if (capture) capture.textContent = `capture · ${status.capture_connected ? 'connected' : 'unavailable'}`;
+  updateHealth({ ...health, ...(status.capture_health || {}), quarantine: health.rejected || status.harness_health?.quarantine_count });
+}
+function updateHealth(health = monitorStatus?.health || {}) {
+  const set = (id, value) => { const el = $('#' + id); if (el) el.textContent = Number(value || 0).toLocaleString(); };
+  set('health-lost', health.events_lost || health.events_lost_total);
+  set('health-tdh', health.tdh_fallback || health.tdh_fallback_events);
+  set('health-quarantine', health.quarantine || health.harness_quarantine);
+  set('health-dropped', health.dropped || health.events_dropped);
+  set('health-late', health.reorder_late_events);
 }
 async function readPages(generation) {
   const id = sessionId;
@@ -191,7 +207,7 @@ async function readPages(generation) {
   if (changed) {
     lastUpdated = new Date();
     $('#last-updated').textContent = t('timeline.updated', { time: lastUpdated.toLocaleTimeString(language()) });
-    renderTimeline(); if (workspace === 'graph') drawGraph();
+    renderTimeline(); if (workspace === 'graph') drawGraph(); if (workspace === 'investigate') renderInvestigate(); if (workspace === 'replay') renderReplay();
     if (follow && workspace === 'timeline') { $('#timeline-list').scrollTop = $('#timeline-list').scrollHeight; renderTimeline(); }
   }
 }
@@ -214,6 +230,8 @@ async function connectDaemon() {
     connectionState(true);
     catalog((await rpc('monitor.templates')).templates);
     const list = await rpc('monitor.list');
+    sessionCatalog = list.monitors || [];
+    renderSessions();
     const existing = list.monitors.find(item => item.health?.running) || list.monitors.at(-1);
     if (existing && (!sessionId || existing.session_id !== sessionId)) {
       sessionId = existing.session_id; rows = []; cursor = 0; monitorStatus = existing;
@@ -223,6 +241,62 @@ async function connectDaemon() {
   } catch (error) { connectionState(false); report(error); }
 }
 $('#connection-status').addEventListener('click', connectDaemon);
+
+function sessionCard(item) {
+  const card = document.createElement('article'); card.className = 'session-card';
+  const id = item.session_id || item.id || '—';
+  const health = item.health || {};
+  const title = document.createElement('h2'); title.textContent = item.runtime_id ? nameOf(item.runtime_id) : 'observe session';
+  const meta = document.createElement('p'); meta.className = 'muted mono'; meta.textContent = id;
+  const stats = document.createElement('div'); stats.className = 'session-card-stats';
+  stats.innerHTML = `<span><b>${Number(health.recognized || 0).toLocaleString()}</b> events</span><span><b>${Number(health.reorder_late_events || 0).toLocaleString()}</b> late</span><span><b>${health.running ? 'live' : 'stopped'}</b></span>`;
+  const actions = document.createElement('div'); actions.className = 'session-card-actions';
+  const open = document.createElement('button'); open.className = 'secondary-button'; open.textContent = t('sessions.open'); open.addEventListener('click', () => { sessionId = id; rows = []; cursor = 0; monitorStatus = item; epoch++; clearTimeout(timer); showWorkspace('investigate'); poll(epoch); });
+  const summary = document.createElement('button'); summary.className = 'text-button'; summary.textContent = t('sessions.summary'); summary.addEventListener('click', () => { showWorkspace('query'); $('#query-result').textContent = JSON.stringify(item, null, 2); });
+  actions.append(open, summary); card.append(title, meta, stats, actions); return card;
+}
+function renderSessions() {
+  const root = $('#session-cards'); if (!root) return;
+  $('#session-count').textContent = sessionCatalog.length;
+  if (!sessionCatalog.length) {
+    root.innerHTML = `<div class="empty-state"><div class="empty-orbit">◎</div><h2>${t('sessions.empty')}</h2><p>${t('sessions.emptyHelp')}</p><button class="secondary-button" data-action="new-session">${t('sessions.start')}</button></div>`;
+    root.querySelector('[data-action="new-session"]')?.addEventListener('click', () => showWorkspace('observe')); return;
+  }
+  const fragment = document.createDocumentFragment(); sessionCatalog.forEach(item => fragment.append(sessionCard(item))); root.replaceChildren(fragment);
+}
+async function refreshSessions() {
+  if (!connected) return report(new Error('daemon offline'));
+  try { sessionCatalog = (await rpc('monitor.list')).monitors || []; renderSessions(); } catch (error) { report(error); }
+}
+function renderInvestigate() {
+  const list = $('#breakpoint-list'); if (!list) return;
+  const breakpoints = rows.filter(row => ['deviated', 'partial', 'unobserved'].includes(String(row.state).toLowerCase()) || row.category === 'breakpoint');
+  $('#breakpoint-count').textContent = breakpoints.length;
+  if (!breakpoints.length) { list.innerHTML = `<p class="muted">${t('investigate.noBreakpoints')}</p>`; $('#breakpoint-card').innerHTML = `<h2>${t('investigate.cardTitle')}</h2><p class="muted">${t('investigate.cardHelp')}</p>`; return; }
+  const fragment = document.createDocumentFragment();
+  breakpoints.slice(-100).forEach(row => { const button = document.createElement('button'); button.className = 'breakpoint-item'; button.textContent = `${row.kind || 'breakpoint'} · ${row.target || row.text || row.seq}`; button.addEventListener('click', () => selectBreakpoint(row)); fragment.append(button); });
+  list.replaceChildren(fragment); renderInvestigateLanes(breakpoints);
+}
+function renderInvestigateLanes(breakpoints = []) {
+  const root = $('#investigate-lanes'); if (!root) return;
+  root.replaceChildren(...rows.slice(-80).map(row => { const el = document.createElement('button'); el.className = `lane-event ${breakpoints.includes(row) ? 'is-breakpoint' : ''}`; el.title = `${row.kind || ''} ${row.target || ''}`; el.textContent = row.source === 'assertion' ? '◆' : '•'; el.addEventListener('click', () => showDetail(row, el)); return el; }));
+}
+function selectBreakpoint(row) {
+  selectedBreakpoint = row; const card = $('#breakpoint-card'); if (!card) return;
+  card.innerHTML = `<div class="panel-title"><h2>${t('investigate.cardTitle')}</h2><span class="row-state">${row.state || 'deviated'}</span></div><dl class="breakpoint-facts"><div><dt>${t('investigate.trigger')}</dt><dd>${row.raw_quote || row.text || row.kind || '—'}</dd></div><div><dt>${t('investigate.evidence')}</dt><dd>${row.target || '—'} · seq ${row.seq ?? '—'}</dd></div><div><dt>${t('investigate.verdict')}</dt><dd>${row.state || 'unobserved'}</dd></div><div><dt>${t('investigate.health')}</dt><dd>${$('#monitor-health')?.textContent || 'observe'}</dd></div></dl><div class="breakpoint-actions"><button class="secondary-button" data-action="why-breakpoint">${t('investigate.why')}</button><button class="secondary-button" data-action="assist-breakpoint">${t('investigate.ai')}</button><button class="text-button" data-action="copy-reference">${t('investigate.copy')}</button></div>`;
+  card.querySelector('[data-action="why-breakpoint"]').addEventListener('click', () => { showWorkspace('query'); $('#query-input').value = row.target || ''; $('#query-form').requestSubmit(); });
+  card.querySelector('[data-action="assist-breakpoint"]').addEventListener('click', () => { showWorkspace('assist'); runAssistant(lastQueryResult).catch(report); });
+  card.querySelector('[data-action="copy-reference"]').addEventListener('click', copyBreakpoint);
+}
+async function copyBreakpoint() { try { await navigator.clipboard.writeText(JSON.stringify(selectedBreakpoint || {}, null, 2)); banner(t('copied')); } catch (error) { report(error); } }
+function renderReplay() {
+  const total = rows.length; replayIndex = Math.min(replayIndex, Math.max(0, total - 1));
+  const bar = $('#replay-progress-bar'); if (bar) bar.style.width = total ? `${((replayIndex + 1) / total) * 100}%` : '0%';
+  const position = $('#replay-position'); if (position) position.textContent = total ? `${replayIndex + 1} / ${total} · ${rows[replayIndex]?.kind || ''}` : t('replay.empty');
+  const bookmarks = $('#replay-bookmarks'); if (bookmarks) { bookmarks.replaceChildren(...rows.filter(row => ['deviated', 'partial'].includes(String(row.state).toLowerCase())).map(row => { const b = document.createElement('button'); b.className = 'text-button'; b.textContent = `#${row.seq}`; b.addEventListener('click', () => { replayIndex = rows.indexOf(row); renderReplay(); }); return b; })); }
+}
+function replayStep(delta) { replayIndex = Math.max(0, Math.min(Math.max(0, rows.length - 1), replayIndex + delta)); renderReplay(); if (rows[replayIndex]) showDetail(rows[replayIndex], $('#replay-next')); }
+function renderCompare() { const left = $('#compare-left'), right = $('#compare-right'); if (left) left.textContent = sessionCatalog[0] ? JSON.stringify(sessionCatalog[0], null, 2) : '—'; if (right) right.textContent = monitorStatus ? JSON.stringify(monitorStatus, null, 2) : '—'; }
 
 let filtered = [];
 function renderTimeline() {
@@ -453,10 +527,55 @@ $('#settings-test').addEventListener('click', () => {
   }
   $('#settings-status').textContent = t('settings.tested');
 });
+
+const MENU_ITEMS = {
+  file: [['new', 'Ctrl+N', () => showWorkspace('observe')], ['open', 'Ctrl+O', () => banner(t('menu.openHint'))], ['attach', '', () => showWorkspace('observe')], ['export', '', () => $('#export-timeline').click()], ['close', 'Ctrl+W', () => showWorkspace('sessions')], ['quit', 'Alt+F4', () => window.close()]],
+  session: [['list', 'Ctrl+Shift+S', () => showWorkspace('sessions')], ['refresh', 'F5', refreshSessions], ['stop', 'Shift+F5', () => $('#stop-monitor').click()], ['summary', 'Ctrl+Shift+M', () => showWorkspace('query')]],
+  analysis: [['why', 'Ctrl+L', () => showWorkspace('query')], ['find', 'Ctrl+F', () => showWorkspace('investigate')], ['stats', 'Ctrl+Shift+D', () => showWorkspace('observe')], ['assist', 'Alt+A', () => showWorkspace('assist')], ['diff', 'Ctrl+D', () => showWorkspace('compare')]],
+  replay: [['play', 'Space', () => { replayTimer ? stopReplay() : startReplay(); }], ['back', '←', () => replayStep(-1)], ['next', '→', () => replayStep(1)], ['break-next', 'N', () => replayStep(1)]],
+  view: [['graph', 'Ctrl+1', () => showWorkspace('graph')], ['timeline', 'Ctrl+2', () => showWorkspace('timeline')], ['breakpoints', 'Ctrl+3', () => showWorkspace('investigate')], ['query', 'Ctrl+4', () => showWorkspace('query')], ['deviated', 'D', () => { filter = 'assertions'; showWorkspace('timeline'); renderTimeline(); }]],
+  tools: [['settings', 'Ctrl+,', () => showWorkspace('settings')], ['doctor', '', () => banner(t('menu.cliHint'))], ['audit', '', () => banner(t('menu.cliHint'))], ['intervention', '', () => showWorkspace('intervention')]],
+  help: [['quickstart', 'F1', () => banner(t('menu.docsHint'))], ['docs', '', () => banner(t('menu.docsHint'))], ['about', '', () => showWorkspace('about')]],
+};
+function menuLabel(key) { return t(`menu.${key}`); }
+function renderMenu(kind) {
+  const root = $('#menu-popover'); if (!root) return;
+  root.replaceChildren(...(MENU_ITEMS[kind] || []).map(([key, shortcut, action]) => { const button = document.createElement('button'); button.className = 'menu-command'; button.setAttribute('role', 'menuitem'); button.innerHTML = `<span>${menuLabel(key)}</span><kbd>${shortcut}</kbd>`; button.addEventListener('click', () => { root.classList.add('hidden'); action(); }); return button; })); root.classList.remove('hidden');
+}
+$$('.menu-root').forEach(button => button.addEventListener('click', event => { event.stopPropagation(); renderMenu(button.dataset.menu); }));
+document.addEventListener('click', () => $('#menu-popover')?.classList.add('hidden'));
+function startReplay() { if (replayTimer || !rows.length) return; replayTimer = setInterval(() => { if (replayIndex >= rows.length - 1) return stopReplay(); replayStep(1); }, Number($('#replay-speed')?.value?.replace('×', '') || 1) === 0.5 ? 1000 : 500); $('#replay-play')?.classList.add('selected'); }
+function stopReplay() { clearInterval(replayTimer); replayTimer = 0; $('#replay-play')?.classList.remove('selected'); }
+$('#replay-play')?.addEventListener('click', () => replayTimer ? stopReplay() : startReplay());
+$('#replay-back')?.addEventListener('click', () => replayStep(-1)); $('#replay-next')?.addEventListener('click', () => replayStep(1));
+$$('[data-action="new-session"]').forEach(button => button.addEventListener('click', () => showWorkspace('observe')));
+$$('[data-action="refresh-sessions"]').forEach(button => button.addEventListener('click', refreshSessions));
+$$('[data-action="open-graph"]').forEach(button => button.addEventListener('click', () => showWorkspace('graph')));
+$$('[data-action="open-query"]').forEach(button => button.addEventListener('click', () => showWorkspace('query')));
+$$('[data-action="open-timeline"]').forEach(button => button.addEventListener('click', () => showWorkspace('timeline')));
+$$('[data-action="copy-reference"]').forEach(button => button.addEventListener('click', copyBreakpoint));
+$$('[data-action="assist-current"]').forEach(button => button.addEventListener('click', () => busy(button, () => runAssistant(lastQueryResult))));
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') $('#menu-popover')?.classList.add('hidden');
+  if (event.altKey && /^[fsarvth]$/i.test(event.key)) {
+    event.preventDefault(); const menu = { f: 'file', s: 'session', a: 'analysis', r: 'replay', v: 'view', t: 'tools', h: 'help' }[event.key.toLowerCase()]; if (menu) renderMenu(menu);
+  }
+  if (event.ctrlKey && event.key.toLowerCase() === 'n') { event.preventDefault(); showWorkspace('observe'); }
+  if (event.ctrlKey && event.key.toLowerCase() === 'o') { event.preventDefault(); banner(t('menu.openHint')); }
+  if (event.ctrlKey && event.key.toLowerCase() === 'd') { event.preventDefault(); showWorkspace('compare'); }
+  if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 's') { event.preventDefault(); showWorkspace('sessions'); }
+  if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'm') { event.preventDefault(); showWorkspace('query'); }
+  if (event.key === 'F5') { event.preventDefault(); refreshSessions(); }
+  if (event.altKey && event.key.toLowerCase() === 'a') showWorkspace('assist');
+  if (event.ctrlKey && event.key.toLowerCase() === 'l') { event.preventDefault(); showWorkspace('query'); $('#query-input')?.focus(); }
+  if (event.key === ' ') { const tag = document.activeElement?.tagName; if (!['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(tag) && workspace === 'replay') { event.preventDefault(); replayTimer ? stopReplay() : startReplay(); } }
+  if (event.key === 'ArrowRight' && workspace === 'replay') replayStep(1);
+  if (event.key === 'ArrowLeft' && workspace === 'replay') replayStep(-1);
+});
 addEventListener('causativelens-language-changed', () => {
-  connectionState(connected); chooseRuntime(selected); showProbe(); renderMonitor(); renderTimeline(); drawGraph();
+  connectionState(connected); chooseRuntime(selected); showProbe(); renderMonitor(); renderTimeline(); renderSessions(); renderInvestigate(); renderReplay(); drawGraph();
   if (bannerKey) banner(t(bannerKey), false, bannerKey);
   if (lastUpdated) $('#last-updated').textContent = t('timeline.updated', { time: lastUpdated.toLocaleTimeString(language()) });
   $('#page-label').textContent = t('nav.' + workspace);
 });
-goStep(0); renderTimeline(); loadAssistantSettings(); connectDaemon();
+goStep(0); renderTimeline(); renderSessions(); loadAssistantSettings(); connectDaemon();

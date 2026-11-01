@@ -113,3 +113,45 @@ fn all_frontends_expose_the_three_supported_locales() {
     assert!(html.contains("language-select"));
     assert!(html.contains("data-i18n"));
 }
+
+#[test]
+fn gui_exposes_the_complete_observation_journey_and_menu_surface() {
+    let html = include_str!("../../clens-gui/frontend/index.html");
+    for workspace in [
+        "sessions",
+        "observe",
+        "investigate",
+        "replay",
+        "compare",
+        "assist",
+        "intervention",
+    ] {
+        assert!(
+            html.contains(&format!("data-panel=\"{workspace}\"")),
+            "GUI is missing workspace {workspace}"
+        );
+        assert!(
+            html.contains(&format!("data-workspace=\"{workspace}\"")),
+            "GUI navigation is missing workspace {workspace}"
+        );
+    }
+    for menu in [
+        "file", "session", "analysis", "replay", "view", "tools", "help",
+    ] {
+        assert!(
+            html.contains(&format!("data-menu=\"{menu}\"")),
+            "GUI is missing menu {menu}"
+        );
+    }
+    assert!(html.contains("observe-only"));
+    assert!(html.contains("health-lost") && html.contains("health-late"));
+}
+
+#[test]
+fn gui_command_surface_keeps_intervention_locked() {
+    let html = include_str!("../../clens-gui/frontend/index.html");
+    let app = include_str!("../../clens-gui/frontend/app.js");
+    assert!(html.contains("data-workspace=\"intervention\" disabled"));
+    assert!(html.contains("PLANNED FOR v0.2.0"));
+    assert!(app.contains("intervention_unavailable") || app.contains("intervention"));
+}
