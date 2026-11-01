@@ -10,6 +10,7 @@
 - Rust crate、CLI、GUI、Tauri、安裝器、payload 與 lockfile 版本統一為 `0.2.5`。
 - 更新三語快速入門、監聽指南與發佈說明。
 - 明確 `v1.0.0` 之前均為 beta/測試版，並繼續保持 observe-only 邊界。
+- 增加可重現程式碼規模報告、中文長文與通俗分享版。
 
 完整說明：[繁體中文](v0.2.5_TW.md) · [English](v0.2.5.en-US.md) · [简体中文](v0.2.5.md)。
 

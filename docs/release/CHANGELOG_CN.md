@@ -10,6 +10,7 @@
 - Rust crate、CLI、GUI、Tauri、安装器、payload 与 lockfile 版本统一为 `0.2.5`。
 - 更新三语快速入门、监听向导与发布说明。
 - 明确 `v1.0.0` 之前均为 beta/测试版，并继续保持 observe-only 边界。
+- 增加可复现代码规模报告、稀土掘金长文和老少皆宜的通俗分享版。
 
 完整说明：[简体中文](v0.2.5.md) · [English](v0.2.5.en-US.md) · [繁體中文](v0.2.5_TW.md)。
 

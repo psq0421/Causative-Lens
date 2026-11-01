@@ -10,6 +10,7 @@
 - Unified all crate, CLI, GUI, Tauri, installer, payload, and lockfile versions at `0.2.5`.
 - Refreshed the trilingual quick-start, monitoring guide, and release notes.
 - Kept the pre-`v1.0.0` beta/test status and observe-only boundary explicit.
+- Added a reproducible code-size report plus a long-form Chinese mechanism article and a plain-language sharing version.
 
 Full notes: [English](v0.2.5.en-US.md) · [简体中文](v0.2.5.md) · [繁體中文](v0.2.5_TW.md).
 

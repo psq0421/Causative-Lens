@@ -52,4 +52,8 @@ Choose a language: [English (US)](README.md) · [简体中文](README_CN.md) · 
 - [Compatibility matrix](reference/compatibility.md) · [简体中文](reference/compatibility_CN.md) · [繁體中文](reference/compatibility_TW.md)
 - [Appendix map](reference/appendices.md) · [简体中文](reference/appendices_CN.md) · [繁體中文](reference/appendices_TW.md)
 
+## Articles
+
+- [v0.2.5 code-size note](articles/v0.2.5-code-size.en-US.md) · [machine-readable count](articles/v0.2.5-code-size.json) · [中文长文：工作机制与代码规模](articles/v0.2.5-juejin.md) · [朋友圈版](articles/v0.2.5-friends.md) · [繁體中文](articles/v0.2.5-friends_TW.md)
+
 The detailed plan and specification files retain their contract identifiers (`CL-BLUEPRINT-001`, `.cllens`, `.clspool`). Each guide links to its language companions so reviewers can find the authoritative source without guessing.

@@ -52,4 +52,8 @@
 - [兼容性矩阵](reference/compatibility_CN.md) · [English](reference/compatibility.md) · [繁體中文](reference/compatibility_TW.md)
 - [附录索引](reference/appendices_CN.md) · [English](reference/appendices.md) · [繁體中文](reference/appendices_TW.md)
 
+## 文章
+
+- [稀土掘金长文：工作机制与代码规模](articles/v0.2.5-juejin.md) · [代码规模 JSON](articles/v0.2.5-code-size.json) · [English code-size note](articles/v0.2.5-code-size.en-US.md) · [朋友圈版](articles/v0.2.5-friends.md) · [繁體中文](articles/v0.2.5-friends_TW.md)
+
 详细方案和规格保留契约编号（`CL-BLUEPRINT-001`、`.cllens`、`.clspool`）。每份指南都列出语言版本，评审时不必猜测权威来源。

@@ -1,0 +1,42 @@
+﻿{
+    "schema":  "causativelens.code-size/1",
+    "commit":  "2db06001464dd9a0a02d586a0b0226274d9ac6ed",
+    "measured_at":  "2026-11-01T14:49:59.4959955Z",
+    "scope":  "tracked files only; docs, Cargo metadata, JSON data, generated target/dist, and .git excluded",
+    "groups":  [
+                   {
+                       "group":  "RustProduction",
+                       "files":  22,
+                       "physical_lines":  12589,
+                       "non_empty_lines":  11991
+                   },
+                   {
+                       "group":  "RustTestsBenchesFuzz",
+                       "files":  8,
+                       "physical_lines":  717,
+                       "non_empty_lines":  686
+                   },
+                   {
+                       "group":  "Frontend",
+                       "files":  6,
+                       "physical_lines":  1500,
+                       "non_empty_lines":  1490
+                   },
+                   {
+                       "group":  "PackagingAndScripts",
+                       "files":  14,
+                       "physical_lines":  1062,
+                       "non_empty_lines":  995
+                   },
+                   {
+                       "group":  "Workflows",
+                       "files":  2,
+                       "physical_lines":  95,
+                       "non_empty_lines":  89
+                   }
+               ],
+    "executable_physical_lines":  15868,
+    "executable_non_empty_lines":  15162,
+    "code_plus_ci_physical_lines":  15963,
+    "code_plus_ci_non_empty_lines":  15251
+}
