@@ -277,7 +277,9 @@ impl ObservationSession {
             self.harness_health.truncate_count = health.rotations;
         }
         for event in events {
-            self.ingest_harness_event(&event);
+            if self.ingest_harness_event(&event).is_err() {
+                self.capture_health.record_capture_failure();
+            }
         }
     }
     pub(super) fn monitor_status(&self, id: Uuid) -> Value {

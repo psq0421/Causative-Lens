@@ -28,6 +28,10 @@ Language navigation: [English index](README.md) · [简体中文索引](README_C
 - daemon：一个 spool reader、一个 Harness tail、`clamp(physical_cpus / 2, 1, 4)` 个断言 worker、一个对齐线程、一个 SQLite writer。
 - 线程预算由 `capture_thread_plan()` 和 `daemon_thread_plan()` 暴露给架构测试；计划不等于运行态完成，未接线线程不得写成已启动。
 
+## 持久化边界
+
+`.clspool`/列式 spool block 持有完整 `SysEvent` payload；SQLite `.cllens` 只保存履约图、事件元数据索引和 spool 定位（`block_id/block_off`）。`event_meta` 不得出现 `payload_json`，`event_search` 只能包含可检索元数据。daemon 通过 `SessionStore::write_batch(StorageBatch)` 写入，事务由 storage crate 内部创建和提交，禁止调用方逐条 `execute` 或依赖外部 `commit` 形成批量语义。
+
 ## 部署形态
 
 `run`、`attach`、`open` 的语义由 CLI/daemon 契约承载：`run` 覆盖子进程生命周期，`attach` 从附加时刻开始，`open` 只读离线。若本机没有 daemon 或 ETW 权限，客户端必须返回可执行的诊断，不得伪造实时采集已启动。

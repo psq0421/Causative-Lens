@@ -15,5 +15,6 @@ Language: [English](README.en-US.md) · [简体中文](README.md) · [繁體中�
 | G7 | T0060–T0072 |
 | Architecture re-check | T0080–T0087 |
 | v0.2.0 capture P0 | T0202–T0206 |
+| v0.2.0 storage boundary | T0207 |
 
 Open any `T*.md` file for the acceptance command and evidence path. The card is the small promise; the gate report is the proof that the promise survived contact with Windows.

@@ -263,7 +263,9 @@ mod tests {
     }
 }
 mod session;
-pub use session::{SessionStore, StoreError};
+pub use session::{
+    AssertionWrite, EventWrite, MatchWrite, SessionStore, SpoolLocation, StorageBatch, StoreError,
+};
 
 #[cfg(test)]
 mod session_tests {
@@ -272,12 +274,13 @@ mod session_tests {
         Assertion, AssertionOp, EventPayload, Expectation, HarnessSpan, IoMode, SysEvent, SysKind,
         TargetPattern,
     };
+    use rusqlite::Connection;
 
     #[test]
     fn sqlite_wal_persists_graph_and_why_chain() {
         let path =
             std::env::temp_dir().join(format!("causativelens-v020-{}.cllens", std::process::id()));
-        let store = SessionStore::open(&path).expect("store");
+        let mut store = SessionStore::open(&path).expect("store");
         let assertion = Assertion {
             schema_v: 1,
             id: 7,
@@ -294,9 +297,11 @@ mod session_tests {
             confidence: 1.0,
             raw_quote: "read config.yaml".into(),
         };
-        store
-            .insert_assertion(&assertion, "rule")
-            .expect("assertion");
+        let mut batch = StorageBatch::default();
+        batch.assertions.push(AssertionWrite {
+            assertion,
+            source: "rule".to_owned(),
+        });
         let event = SysEvent {
             schema_v: 1,
             seq: 9,
@@ -312,20 +317,145 @@ mod session_tests {
                 write_attrs: false,
             },
         };
-        store
-            .insert_event(&event, Some("config.yaml"))
-            .expect("event");
-        store
-            .insert_match(7, 9, 0.9, &serde_json::json!({"path":1.0}), "Fulfilled")
-            .expect("evidence");
+        batch.events.push(EventWrite {
+            event,
+            path: Some("config.yaml".to_owned()),
+            spool: Some(SpoolLocation {
+                block_id: 3,
+                block_offset: 12,
+            }),
+        });
+        batch.matches.push(MatchWrite {
+            assertion_id: 7,
+            event_seq: 9,
+            score: 0.9,
+            components: serde_json::json!({"path":1.0}),
+            state: "Fulfilled".to_owned(),
+        });
+        store.write_batch(batch).expect("atomic batch");
         let result = store.query_why("config.yaml").expect("why");
         assert_eq!(result["chain"]["trigger_assertion"]["id"], 7);
         assert_eq!(result["chain"]["evidence_events"][0]["event_seq"], 9);
         drop(store);
         let reopened = SessionStore::open(&path).expect("reopen");
         assert_eq!(reopened.counts().expect("counts"), (1, 1, 1));
+        let connection = Connection::open(&path).expect("inspect database");
+        let columns = connection
+            .prepare("PRAGMA table_info(event_meta)")
+            .expect("event_meta schema")
+            .query_map([], |row| row.get::<_, String>(1))
+            .expect("event_meta columns")
+            .collect::<Result<Vec<_>, _>>()
+            .expect("column list");
+        assert!(!columns.iter().any(|column| column == "payload_json"));
+        let block: (i64, i64) = connection
+            .query_row(
+                "SELECT block_id,block_off FROM event_meta WHERE seq=9",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("spool pointer");
+        assert_eq!(block, (3, 12));
+        let indexed_text: String = connection
+            .query_row("SELECT text FROM event_search WHERE seq=9", [], |row| {
+                row.get(0)
+            })
+            .expect("event search row");
+        assert_eq!(indexed_text, "FileRead config.yaml");
         let _ = std::fs::remove_file(&path);
         let _ = std::fs::remove_file(path.with_extension("cllens-wal"));
         let _ = std::fs::remove_file(path.with_extension("cllens-shm"));
+    }
+
+    #[test]
+    fn legacy_payload_column_is_migrated_out_and_search_payload_is_cleared() {
+        let path = std::env::temp_dir().join(format!(
+            "causativelens-legacy-event-meta-{}.cllens",
+            std::process::id()
+        ));
+        let connection = Connection::open(&path).expect("legacy database");
+        connection
+            .execute_batch(
+                "CREATE TABLE event_meta (seq INTEGER PRIMARY KEY, schema_v INTEGER NOT NULL,
+                    ts_qpc INTEGER, pid INTEGER, tid INTEGER, kind TEXT,
+                    is_rundown INTEGER NOT NULL DEFAULT 0, block_id INTEGER,
+                    block_off INTEGER, path_id INTEGER, remote TEXT, payload_json TEXT) WITHOUT ROWID;
+                 CREATE VIRTUAL TABLE event_search USING fts5(seq UNINDEXED, text, path, remote);
+                 INSERT INTO event_search(seq,text) VALUES(1,'{\"payload\":\"secret\"}');",
+            )
+            .expect("legacy schema");
+        drop(connection);
+
+        let store = SessionStore::open(&path).expect("migrate legacy database");
+        drop(store);
+        let connection = Connection::open(&path).expect("reopen migrated database");
+        let columns = connection
+            .prepare("PRAGMA table_info(event_meta)")
+            .expect("event_meta schema")
+            .query_map([], |row| row.get::<_, String>(1))
+            .expect("event_meta columns")
+            .collect::<Result<Vec<_>, _>>()
+            .expect("column list");
+        assert!(!columns.iter().any(|column| column == "payload_json"));
+        let indexed_rows: i64 = connection
+            .query_row("SELECT count(*) FROM event_search", [], |row| row.get(0))
+            .expect("cleared search index");
+        assert_eq!(indexed_rows, 0);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn write_batch_rolls_back_all_rows_when_one_operation_fails() {
+        let path = std::env::temp_dir().join(format!(
+            "causativelens-atomic-batch-{}.cllens",
+            std::process::id()
+        ));
+        let mut store = SessionStore::open(&path).expect("store");
+        let connection = Connection::open(&path).expect("trigger connection");
+        connection
+            .execute_batch(
+                "CREATE TRIGGER fail_second_event
+                 BEFORE INSERT ON event_meta WHEN NEW.seq = 2
+                 BEGIN SELECT RAISE(ABORT, 'injected batch failure'); END;",
+            )
+            .expect("failure trigger");
+        drop(connection);
+
+        let event = |seq| SysEvent {
+            schema_v: 1,
+            seq,
+            ts_qpc: seq,
+            pid: 10,
+            tid: 11,
+            kind: SysKind::FileRead,
+            is_rundown: false,
+            payload: EventPayload::File {
+                path: 1,
+                desired_access: 0,
+                io_len: Some(1),
+                write_attrs: false,
+            },
+        };
+        let mut batch = StorageBatch::default();
+        batch.events.push(EventWrite {
+            event: event(1),
+            path: Some("one.txt".to_owned()),
+            spool: Some(SpoolLocation {
+                block_id: 1,
+                block_offset: 0,
+            }),
+        });
+        batch.events.push(EventWrite {
+            event: event(2),
+            path: Some("two.txt".to_owned()),
+            spool: Some(SpoolLocation {
+                block_id: 2,
+                block_offset: 0,
+            }),
+        });
+        assert!(store.write_batch(batch).is_err());
+        assert_eq!(store.counts().expect("counts"), (0, 0, 0));
+        drop(store);
+        let _ = std::fs::remove_file(&path);
     }
 }

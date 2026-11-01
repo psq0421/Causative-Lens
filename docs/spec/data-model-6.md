@@ -35,6 +35,12 @@ Language navigation: [English index](README.md) · [简体中文索引](README_C
 
 履约图仍是 SQLite 的断言节点、事件节点和两类边：`evidence(assertion_id,event_seq)` 与 `Assertion.order_key`。`assertions`、`verdicts`、`event_meta` 均保存 `schema_v`；`interventions`/`decisions` 只建表。
 
+### 事件明细与 SQLite 边界
+
+`event_meta` 是索引表，不是事件明细表。它只保存 `seq`、时间、进程、事件种类、路径/远端索引以及完整 payload 在 `.clspool` 列式块中的 `block_id/block_off`。`EventPayload` 的 JSON、原始缓冲区和大字段禁止写入 SQLite；`event_search` 也只能索引可检索的 kind/path/remote/image 等元数据，不得把序列化 `SysEvent` 当作全文字段。
+
+所有持久化必须经 `clens_storage::SessionStore::write_batch(StorageBatch)`。该 API 在存储边界内部开启事务，并一次提交事件元数据、断言和 evidence/verdict 更新；调用方没有单条 autocommit 写入接口。批次中的任意一项失败，整个批次回滚。打开旧 `.cllens` 时若发现历史 `event_meta.payload_json`，迁移会重建表并清空由 payload 生成的旧搜索索引。
+
 ## 测试契约
 
 `clens-types` 覆盖稳定 ID、source span、order key、Verdict edge 的 serde round-trip；`clens-capture` 覆盖路径驻留和 seq 分配；核心、daemon、storage 既有 fixture 与 observe 契约继续运行。完整 workspace 的离线测试若因本机 Tauri 缓存缺少 `redox_users`/`windows_i686_gnu` 失败，必须报告环境原因，不得删掉 GUI 成员。

@@ -1,6 +1,6 @@
 use crate::GRAPH_SCHEMA_V1;
 use clens_types::{Assertion, EventPayload, SysEvent, TargetPattern};
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 
@@ -8,6 +8,53 @@ use std::path::{Path, PathBuf};
 pub struct SessionStore {
     connection: Connection,
     path: PathBuf,
+}
+
+/// Location of the complete event payload in the append-only spool. SQLite
+/// stores this pointer and the searchable metadata only; it never stores the
+/// serialized `SysEvent` payload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SpoolLocation {
+    pub block_id: u64,
+    pub block_offset: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct EventWrite {
+    pub event: SysEvent,
+    pub path: Option<String>,
+    pub spool: Option<SpoolLocation>,
+}
+
+#[derive(Debug, Clone)]
+pub struct AssertionWrite {
+    pub assertion: Assertion,
+    pub source: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchWrite {
+    pub assertion_id: u64,
+    pub event_seq: u64,
+    pub score: f32,
+    pub components: Value,
+    pub state: String,
+}
+
+/// A single SQLite commit unit. The storage boundary owns the transaction so
+/// callers cannot accidentally persist one event with autocommit and another
+/// event later in a separate transaction.
+#[derive(Debug, Default, Clone)]
+pub struct StorageBatch {
+    pub events: Vec<EventWrite>,
+    pub assertions: Vec<AssertionWrite>,
+    pub matches: Vec<MatchWrite>,
+}
+
+impl StorageBatch {
+    pub fn is_empty(&self) -> bool {
+        self.events.is_empty() && self.assertions.is_empty() && self.matches.is_empty()
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -26,15 +73,15 @@ impl SessionStore {
                 StoreError::Sqlite(rusqlite::Error::ToSqlConversionFailure(Box::new(error)))
             })?;
         }
-        let connection = Connection::open(&path)?;
+        let mut connection = Connection::open(&path)?;
         connection.execute_batch(GRAPH_SCHEMA_V1)?;
-        add_column_if_missing(&connection, "event_meta", "payload_json", "TEXT")?;
         add_column_if_missing(
             &connection,
             "evidence",
             "state",
             "TEXT NOT NULL DEFAULT 'partial'",
         )?;
+        migrate_legacy_event_payload(&mut connection)?;
         Ok(Self { connection, path })
     }
 
@@ -42,93 +89,21 @@ impl SessionStore {
         &self.path
     }
 
-    pub fn insert_path(&self, id: u32, path: &str) -> Result<(), StoreError> {
-        self.connection.execute(
-            "INSERT INTO paths(id,path) VALUES(?1,?2) ON CONFLICT(id) DO UPDATE SET path=excluded.path",
-            params![i64::from(id), path],
-        )?;
-        Ok(())
-    }
-
-    pub fn insert_event(&self, event: &SysEvent, path: Option<&str>) -> Result<(), StoreError> {
-        if let (EventPayload::File { path: path_id, .. }, Some(value)) = (&event.payload, path) {
-            self.insert_path(*path_id, value)?;
+    pub fn write_batch(&mut self, batch: StorageBatch) -> Result<(), StoreError> {
+        if batch.is_empty() {
+            return Ok(());
         }
-        let payload = serde_json::to_string(&event.payload)?;
-        self.connection.execute(
-            "INSERT INTO event_meta(seq,schema_v,ts_qpc,pid,tid,kind,is_rundown,path_id,remote,payload_json) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10) ON CONFLICT(seq) DO NOTHING",
-            params![
-                i64::try_from(event.seq).unwrap_or(i64::MAX),
-                i64::from(event.schema_v),
-                i64::try_from(event.ts_qpc).unwrap_or(i64::MAX),
-                i64::from(event.pid),
-                i64::from(event.tid),
-                format!("{:?}", event.kind),
-                i64::from(u8::from(event.is_rundown)),
-                match event.payload { EventPayload::File { path, .. } => Some(i64::from(path)), _ => None },
-                remote_for_event(event),
-                payload,
-            ],
-        )?;
-        self.connection.execute(
-            "DELETE FROM event_search WHERE seq=?1",
-            params![i64::try_from(event.seq).unwrap_or(i64::MAX)],
-        )?;
-        self.connection.execute(
-            "INSERT INTO event_search(seq,text,path,remote) VALUES(?1,?2,?3,?4)",
-            params![
-                i64::try_from(event.seq).unwrap_or(i64::MAX),
-                payload,
-                path,
-                remote_for_event(event)
-            ],
-        )?;
-        Ok(())
-    }
-
-    pub fn insert_assertion(&self, assertion: &Assertion, source: &str) -> Result<(), StoreError> {
-        self.connection.execute(
-            "INSERT INTO assertions(id,schema_v,step,span_json,op,target,io_mode,expect,order_key,confidence,raw_quote,source) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12) ON CONFLICT(id) DO UPDATE SET confidence=excluded.confidence",
-            params![
-                i64::try_from(assertion.id).unwrap_or(i64::MAX),
-                i64::from(assertion.schema_v),
-                i64::try_from(assertion.span.step).unwrap_or(i64::MAX),
-                serde_json::to_string(&assertion.span)?,
-                format!("{:?}", assertion.op),
-                target_text(&assertion.target),
-                format!("{:?}", assertion.io_mode),
-                format!("{:?}", assertion.expect),
-                serde_json::to_string(&assertion.order_key)?,
-                assertion.confidence,
-                assertion.raw_quote.as_ref(),
-                source,
-            ],
-        )?;
-        Ok(())
-    }
-
-    pub fn insert_match(
-        &self,
-        assertion_id: u64,
-        event_seq: u64,
-        score: f32,
-        components: &Value,
-        state: &str,
-    ) -> Result<(), StoreError> {
-        self.connection.execute(
-            "INSERT INTO evidence(assertion_id,event_seq,score,components_json,state) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(assertion_id,event_seq) DO UPDATE SET score=excluded.score,components_json=excluded.components_json,state=excluded.state",
-            params![i64::try_from(assertion_id).unwrap_or(i64::MAX), i64::try_from(event_seq).unwrap_or(i64::MAX), score, components.to_string(), state],
-        )?;
-        self.connection.execute(
-            "INSERT INTO verdicts(assertion_id,schema_v,state,decided_at) VALUES(?1,1,?2,strftime('%s','now')) ON CONFLICT(assertion_id) DO UPDATE SET state=excluded.state,decided_at=excluded.decided_at",
-            params![i64::try_from(assertion_id).unwrap_or(i64::MAX), state],
-        )?;
-        Ok(())
-    }
-
-    pub fn commit(&self) -> Result<(), StoreError> {
-        self.connection
-            .execute_batch("PRAGMA wal_checkpoint(PASSIVE);")?;
+        let transaction = self.connection.transaction()?;
+        for event in &batch.events {
+            insert_event_meta(&transaction, event)?;
+        }
+        for assertion in &batch.assertions {
+            insert_assertion(&transaction, assertion)?;
+        }
+        for matched in &batch.matches {
+            insert_match(&transaction, matched)?;
+        }
+        transaction.commit()?;
         Ok(())
     }
 
@@ -193,6 +168,146 @@ fn add_column_if_missing(
     Ok(())
 }
 
+fn migrate_legacy_event_payload(connection: &mut Connection) -> Result<(), StoreError> {
+    if !table_has_column(connection, "event_meta", "payload_json")? {
+        return Ok(());
+    }
+    let transaction = connection.transaction()?;
+    transaction.execute_batch(
+        "CREATE TABLE event_meta_without_payload (
+            seq INTEGER PRIMARY KEY,
+            schema_v INTEGER NOT NULL,
+            ts_qpc INTEGER,
+            pid INTEGER,
+            tid INTEGER,
+            kind TEXT,
+            is_rundown INTEGER NOT NULL DEFAULT 0,
+            block_id INTEGER,
+            block_off INTEGER,
+            path_id INTEGER,
+            remote TEXT
+        ) WITHOUT ROWID;
+        INSERT INTO event_meta_without_payload
+            (seq,schema_v,ts_qpc,pid,tid,kind,is_rundown,block_id,block_off,path_id,remote)
+            SELECT seq,schema_v,ts_qpc,pid,tid,kind,is_rundown,block_id,block_off,path_id,remote
+            FROM event_meta;
+        DROP TABLE event_meta;
+        ALTER TABLE event_meta_without_payload RENAME TO event_meta;
+        DELETE FROM event_search;",
+    )?;
+    transaction.commit()?;
+    Ok(())
+}
+
+fn table_has_column(
+    connection: &Connection,
+    table: &str,
+    column: &str,
+) -> Result<bool, StoreError> {
+    Ok(connection
+        .prepare(&format!("PRAGMA table_info({table})"))?
+        .query_map([], |row| row.get::<_, String>(1))?
+        .any(|result| result.is_ok_and(|value| value == column)))
+}
+
+fn insert_event_meta(transaction: &Transaction<'_>, record: &EventWrite) -> Result<(), StoreError> {
+    let event = &record.event;
+    if let (EventPayload::File { path: path_id, .. }, Some(value)) = (&event.payload, &record.path)
+    {
+        transaction.execute(
+            "INSERT INTO paths(id,path) VALUES(?1,?2) ON CONFLICT(id) DO UPDATE SET path=excluded.path",
+            params![i64::from(*path_id), value],
+        )?;
+    }
+    let (block_id, block_off) = record
+        .spool
+        .map(|location| {
+            (
+                Some(i64::try_from(location.block_id).unwrap_or(i64::MAX)),
+                Some(i64::try_from(location.block_offset).unwrap_or(i64::MAX)),
+            )
+        })
+        .unwrap_or((None, None));
+    let seq = i64::try_from(event.seq).unwrap_or(i64::MAX);
+    let remote = remote_for_event(event);
+    transaction.execute(
+        "INSERT INTO event_meta(seq,schema_v,ts_qpc,pid,tid,kind,is_rundown,block_id,block_off,path_id,remote) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11) ON CONFLICT(seq) DO NOTHING",
+        params![
+            seq,
+            i64::from(event.schema_v),
+            i64::try_from(event.ts_qpc).unwrap_or(i64::MAX),
+            i64::from(event.pid),
+            i64::from(event.tid),
+            format!("{:?}", event.kind),
+            i64::from(u8::from(event.is_rundown)),
+            block_id,
+            block_off,
+            match event.payload {
+                EventPayload::File { path, .. } => Some(i64::from(path)),
+                _ => None,
+            },
+            remote.as_deref(),
+        ],
+    )?;
+    transaction.execute("DELETE FROM event_search WHERE seq=?1", params![seq])?;
+    transaction.execute(
+        "INSERT INTO event_search(seq,text,path,remote) VALUES(?1,?2,?3,?4)",
+        params![
+            seq,
+            event_search_text(event, record.path.as_deref(), remote.as_deref()),
+            record.path,
+            remote
+        ],
+    )?;
+    Ok(())
+}
+
+fn insert_assertion(
+    transaction: &Transaction<'_>,
+    record: &AssertionWrite,
+) -> Result<(), StoreError> {
+    let assertion = &record.assertion;
+    transaction.execute(
+        "INSERT INTO assertions(id,schema_v,step,span_json,op,target,io_mode,expect,order_key,confidence,raw_quote,source) VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12) ON CONFLICT(id) DO UPDATE SET confidence=excluded.confidence",
+        params![
+            i64::try_from(assertion.id).unwrap_or(i64::MAX),
+            i64::from(assertion.schema_v),
+            i64::try_from(assertion.span.step).unwrap_or(i64::MAX),
+            serde_json::to_string(&assertion.span)?,
+            format!("{:?}", assertion.op),
+            target_text(&assertion.target),
+            format!("{:?}", assertion.io_mode),
+            format!("{:?}", assertion.expect),
+            serde_json::to_string(&assertion.order_key)?,
+            assertion.confidence,
+            assertion.raw_quote.as_ref(),
+            record.source,
+        ],
+    )?;
+    Ok(())
+}
+
+fn insert_match(transaction: &Transaction<'_>, matched: &MatchWrite) -> Result<(), StoreError> {
+    transaction.execute(
+        "INSERT INTO evidence(assertion_id,event_seq,score,components_json,state) VALUES(?1,?2,?3,?4,?5) ON CONFLICT(assertion_id,event_seq) DO UPDATE SET score=excluded.score,components_json=excluded.components_json,state=excluded.state",
+        params![
+            i64::try_from(matched.assertion_id).unwrap_or(i64::MAX),
+            i64::try_from(matched.event_seq).unwrap_or(i64::MAX),
+            matched.score,
+            matched.components.to_string(),
+            matched.state,
+        ],
+    )?;
+    transaction.execute(
+        "INSERT INTO verdicts(assertion_id,schema_v,state,decided_at) VALUES(?1,1,?2,strftime('%s','now')) ON CONFLICT(assertion_id) DO UPDATE SET state=excluded.state,decided_at=excluded.decided_at",
+        params![
+            i64::try_from(matched.assertion_id).unwrap_or(i64::MAX),
+            matched.state,
+        ],
+    )?;
+    Ok(())
+}
+
 fn target_text(target: &TargetPattern) -> String {
     match target {
         TargetPattern::Path(value) => value.to_string(),
@@ -206,5 +321,16 @@ fn remote_for_event(event: &SysEvent) -> Option<String> {
     match &event.payload {
         EventPayload::Net { remote, .. } => Some(format!("{}:{}", remote.host, remote.port)),
         _ => None,
+    }
+}
+
+fn event_search_text(event: &SysEvent, path: Option<&str>, remote: Option<&str>) -> String {
+    let kind = format!("{:?}", event.kind);
+    match &event.payload {
+        EventPayload::Proc { image, cmd, .. } => format!("{kind} {image} {cmd}"),
+        EventPayload::File { .. } => format!("{kind} {}", path.unwrap_or_default()),
+        EventPayload::Net { .. } => format!("{kind} {}", remote.unwrap_or_default()),
+        EventPayload::Reg { key, .. } => format!("{kind} {key}"),
+        EventPayload::None => kind,
     }
 }

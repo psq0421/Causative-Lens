@@ -49,6 +49,7 @@
 - [alignment-audit-9.md](alignment-audit-9.md)：蓝图第 9.1–9.9 因果对齐引擎复检
 - [../spec/alignment-9.md](../spec/alignment-9.md)：评分、时间窗、水位线、路径、网络和进程归属契约
 - `task-cards/T0085-因果对齐引擎第9章复检.md`：第 9 章复检与 G3 对齐门禁
+- `task-cards/T0207-storage-payload-boundary-and-batch.md`：SQLite 明细边界、spool 定位与原子批量事务
 
 - [query-11.md](../spec/query-11.md)：`why` 受限路由、五段式查询、回放叠加与终端渲染契约
 - [query-audit-11.md](query-audit-11.md)：第 11 章查询/回放/终端复检记录

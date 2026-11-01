@@ -7,7 +7,9 @@ use clens_core::{
 };
 use clens_harnessd::monitor::LiveMonitor;
 use clens_harnessd::{extract_rule_assertions, AssertionPool, TailHealth};
-use clens_storage::{SessionStore, SpoolFrame};
+use clens_storage::{
+    AssertionWrite, EventWrite, MatchWrite, SessionStore, SpoolFrame, SpoolLocation, StorageBatch,
+};
 use clens_types::{
     HarnessEvent, HelloRequest, HelloResponse, Mode, RpcError, SessionTicket, SysEvent,
     DEV_VERSION, PRODUCT_NAME, RPC_MAX_MESSAGE_BYTES, RPC_METHOD_MAX_BYTES,
@@ -112,12 +114,15 @@ impl ObservationSession {
         }
     }
 
-    pub fn ingest_harness_event(&mut self, event: &HarnessEvent) -> Option<u64> {
+    pub fn ingest_harness_event(
+        &mut self,
+        event: &HarnessEvent,
+    ) -> Result<Option<u64>, ObservationError> {
         if !self
             .seen_harness
             .insert((event.harness_log_id, event.line_no.max(event.step)))
         {
-            return None;
+            return Ok(None);
         }
         if self.seen_harness.len() > 100_000 {
             self.seen_harness.clear();
@@ -143,9 +148,10 @@ impl ObservationSession {
         });
         let assertions = extract_rule_assertions(event, 0);
         if assertions.is_empty() {
-            return None;
+            return Ok(None);
         }
         let mut first_id = None;
+        let mut batch = StorageBatch::default();
         for assertion in assertions {
             let assertion_for_store = assertion.clone();
             let target = match &assertion.target {
@@ -163,12 +169,10 @@ impl ObservationSession {
                 state: "unobserved".into(),
             });
             let id = self.assertion_pool.insert(assertion);
-            if let Some(store) = &self.store {
-                store
-                    .insert_assertion(&assertion_for_store, "rule")
-                    .map_err(|error| ObservationError::Storage(error.to_string()))
-                    .ok();
-            }
+            batch.assertions.push(AssertionWrite {
+                assertion: assertion_for_store,
+                source: "rule".to_owned(),
+            });
             if let Some(candidate) = self.assertion_pool.values().find(|value| value.id == id) {
                 if let clens_types::TargetPattern::Path(path) = &candidate.target {
                     self.path_index
@@ -182,7 +186,12 @@ impl ObservationSession {
                 first_id = Some(id);
             }
         }
-        first_id
+        if let Some(store) = self.store.as_mut() {
+            store
+                .write_batch(batch)
+                .map_err(|error| ObservationError::Storage(error.to_string()))?;
+        }
+        Ok(first_id)
     }
 
     pub fn record_harness_health(&mut self, health: TailHealth) {
@@ -240,17 +249,6 @@ impl ObservationSession {
             state: "observed".into(),
         });
         self.events.insert(event.seq, event.clone());
-        if let Some(store) = &self.store {
-            let path = match &event.payload {
-                clens_types::EventPayload::File { path, .. } => {
-                    self.path_table.get(path).map(String::as_str)
-                }
-                _ => None,
-            };
-            store
-                .insert_event(event, path)
-                .map_err(|error| ObservationError::Storage(error.to_string()))?;
-        }
         match (&event.kind, &event.payload) {
             (clens_types::SysKind::ProcStart, clens_types::EventPayload::Proc { ppid, .. }) => {
                 self.process_tree.observe_start(event.pid, *ppid);
@@ -260,6 +258,10 @@ impl ObservationSession {
         }
         let payload = serde_json::to_vec(event)
             .map_err(|error| ObservationError::Serialization(error.to_string()))?;
+        let spool_location = SpoolLocation {
+            block_id: self.spool_frames.len() as u64,
+            block_offset: 0,
+        };
         self.spool_frames.push(SpoolFrame {
             schema_v: 1,
             flags: 0,
@@ -327,22 +329,32 @@ impl ObservationSession {
                 self.matches.push(matched);
             }
         }
-        if let Some(store) = &self.store {
+        if let Some(store) = self.store.as_mut() {
+            let path = match &event.payload {
+                clens_types::EventPayload::File { path, .. } => self.path_table.get(path).cloned(),
+                _ => None,
+            };
+            let mut batch = StorageBatch {
+                events: vec![EventWrite {
+                    event: event.clone(),
+                    path,
+                    spool: Some(spool_location),
+                }],
+                ..StorageBatch::default()
+            };
             for matched in &self.matches[match_start..] {
                 let components = serde_json::to_value(matched.score)
                     .map_err(|error| ObservationError::Serialization(error.to_string()))?;
-                store
-                    .insert_match(
-                        matched.assertion_id,
-                        matched.event_seq,
-                        matched.score.total,
-                        &components,
-                        &format!("{:?}", matched.state),
-                    )
-                    .map_err(|error| ObservationError::Storage(error.to_string()))?;
+                batch.matches.push(MatchWrite {
+                    assertion_id: matched.assertion_id,
+                    event_seq: matched.event_seq,
+                    score: matched.score.total,
+                    components,
+                    state: format!("{:?}", matched.state),
+                });
             }
             store
-                .commit()
+                .write_batch(batch)
                 .map_err(|error| ObservationError::Storage(error.to_string()))?;
         }
         Ok(())
@@ -632,7 +644,15 @@ impl DaemonState {
                         )
                     }
                 };
-                let assertion_id = session.ingest_harness_event(&event);
+                let assertion_id = match session.ingest_harness_event(&event) {
+                    Ok(value) => value,
+                    Err(error) => {
+                        return RpcResponse::error(
+                            request.id,
+                            RpcError::InvalidParams(error.to_string()),
+                        )
+                    }
+                };
                 RpcResponse::ok(
                     request.id,
                     json!({"assertion_id": assertion_id, "mode":"observe"}),
@@ -1111,7 +1131,11 @@ mod tests {
             .expect("rule assertion");
         assert_eq!(
             assertion_id,
-            clens_types::stable_assertion_id(harness.harness_log_id, harness.line_no, 0)
+            Some(clens_types::stable_assertion_id(
+                harness.harness_log_id,
+                harness.line_no,
+                0,
+            ))
         );
         let event = SysEvent {
             schema_v: 1,

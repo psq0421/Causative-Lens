@@ -16,7 +16,7 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 | order_key | 已补到 Assertion，默认 `None` 保持旧日志可读 | `crates/clens-types/src/lib.rs` |
 | 稳定 assertion_id | 已由三元组确定性 FNV-1a 生成；池内矛盾状态单独维护 | `stable_assertion_id`、`AssertionPool` |
 | Fulfilment/Verdict | 已下沉到 clens-types；候选 Unrelated 仍是 core 内部状态 | `verdict_from_match` |
-| SQLite 履约图 | DDL 已为 assertions/verdicts/event_meta 增加 schema_v；干预表仍只建表 | `clens-storage::GRAPH_SCHEMA_V1` |
+| SQLite 履约图 | DDL 与 `SessionStore::write_batch` 已冻结为索引/判定边界；`event_meta` 不含 `payload_json`，通过 `block_id/block_off` 指向 spool；干预表仍只建表 | `clens-storage::GRAPH_SCHEMA_V1`、`T0207` |
 | session ID UTC+随机后缀 | RPC ticket 仍用 UUID，尚未切换 `.cllens` 文件主键 | OQ-018，避免破坏 RPC 兼容 |
 
 ## 验证记录

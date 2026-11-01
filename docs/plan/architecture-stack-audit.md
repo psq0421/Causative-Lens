@@ -17,7 +17,7 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 | CLI | 当前有 observe 命令集合和 daemon RPC fallback，但解析器仍是手写，`shell` 尚未成为 REPL | 已保留 CLI 优先原则；clap v4/REPL 列为 G4 实现项。 |
 | GUI 时间 | 新要求描述 v1 GUI，已批准方案要求 v0.1.0 G6 GUI | 按已批准方案交付 v0.1.0 GUI；将“CLI 优先”解释为核心路径和交互顺序优先，不移除 G6。 |
 | 包体/RSS | 新要求 `<15MB`/`<120MB`，已批准 R7 是 `<25MB`/`<150MB` | v0.1.0 保留 `<25MB`/`<150MB` 硬门；`<15MB`/`<120MB` 作为优化目标，需人类改红线后才升级。 |
-| SQLite | 当前只有 DDL 常量和 spool writer，无 rusqlite writer | 已补 FTS5 schema 契约；rusqlite bundled、单写者线程和 `.cllens` writer 仍未实现。 |
+| SQLite | `SessionStore` 已提供 WAL-backed `write_batch`；事件完整 payload 不写入 SQLite | `StorageBatch` 在 storage 内部拥有 BEGIN/COMMIT；`event_meta` 只保留元数据与 spool 定位，旧 `payload_json` 会迁移移除。 |
 | 列式 spool | 当前为 CRC append frame，不是 zstd 压缩列式块 | 保留 `.clspool` 兼容帧；列式 block、zstd 压缩和 block index 作为存储卡，不把当前帧格式误称为最终列式实现。 |
 | 依赖治理 | 原来没有 deny/audit 配置 | 新增 `deny.toml`、`dependency_audit.ps1` 和依赖策略契约，并加入 CI。工具未安装时只输出降级警告，不能作为发布通过证据。 |
 

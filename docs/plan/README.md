@@ -62,5 +62,6 @@
 - `task-cards/T0204-registry-network-fast-decoder.md`：Registry/Network 手工布局与 TDH oracle
 - `task-cards/T0205-daemon-ring-reader.md`：daemon ring reader 与兼容桥
 - `task-cards/T0206-capture-benchmark-release-gate.md`：采集端到端基准与发布门
+- `task-cards/T0207-storage-payload-boundary-and-batch.md`：SQLite 明细边界、spool 定位与原子批量事务
 
 

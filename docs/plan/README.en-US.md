@@ -22,6 +22,7 @@ This directory turns `CL-BLUEPRINT-001` chapters M0–M7 into one G0–G7 releas
 - [Task cards](task-cards/)
 - [Capture fast-path refinement](capture-fast-path.en-US.md) · [简体中文](capture-fast-path.md)
 - [T0202 capture ring and decode fast path](task-cards/T0202-capture-ring-and-fast-path.md)
+- [T0207 storage payload boundary and atomic batches](task-cards/T0207-storage-payload-boundary-and-batch.en-US.md)
 - [Gate reports](gate-reports/)
 
 Every card keeps a copyable DoD command and a completion record. A gate report is the logbook entry; no gate advances on optimism alone.
