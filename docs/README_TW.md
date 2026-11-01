@@ -55,5 +55,6 @@
 ## 文章
 
 - [朋友圈版](articles/v0.2.5-friends_TW.md) · [程式碼規模 JSON](articles/v0.2.5-code-size.json) · [English code-size note](articles/v0.2.5-code-size.en-US.md) · [简体中文長文](articles/v0.2.5-juejin.md) · [简体中文朋友圈版](articles/v0.2.5-friends.md)
+- [架構評審長文（簡體中文）](articles/v0.2.5-juejin-architecture-review.md)
 
 詳細方案和規格保留契約編號（`CL-BLUEPRINT-001`、`.cllens`、`.clspool`）。每份指南都列出語言版本，評審時不必猜測權威來源。
