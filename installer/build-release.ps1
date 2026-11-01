@@ -1,7 +1,7 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [ValidateSet('x64','arm64')][string]$Arch = 'x64',
-    [string]$Version = '0.2.0'
+    [string]$Version = '0.2.5'
 )
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path

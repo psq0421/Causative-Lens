@@ -1,30 +1,37 @@
-# 變更記錄
+﻿# 變更日誌
 
-## 0.1.2 Beta（2026-10-26）
+## 0.2.5 測試版（2026-11-01）
 
-- 新增可選 `clens-assist` 輔助層，支援具證據約束的 Jev、OpenAI-compatible、Anthropic-compatible 與本機 Ollama 分析。
-- GUI 新增「設定」工作區，支援提供方、Endpoint、模型、隱私、逾時、時間線、語言與主題設定。
-- 新增 `clens assist` 與 `clens why --assist`；API key 只保留於程序記憶體，不寫入 `settings.json`。
-- 強制可追溯引用：模型 finding 必須引用提交因果鏈中真實存在的斷言 ID 或事件序列。
-- 加固 Endpoint/header 驗證、Windows 設定重複儲存、相對路徑脫敏與 CLI 人類可讀輸出。
-- 保持 observe-only 邊界：Jev 決策、介入層、ETW 生產閉環與 ARM64 執行態仍不在本 beta 的已驗證範圍內。
-- 依維護者要求，本版本以 GitHub 普通 Release（非預發行）發佈；`v1.0.0` 之前的軟體仍屬測試軟體。建置機沒有 Azure Trusted Signing 憑據，上傳的 x64 安裝包明確標記為未簽名。
-- [完整 v0.1.2 說明](v0.1.2.md)。
-## 0.1.1 Beta（2026-10-25）
+> **這是本專案迄今最大的一次更新。**
 
-- 重做 Fluent 監聽精靈，提供 20 項依內容識別的執行階段範本。
-- 修復 Timeline 篩選，加入搜尋/詳情/跟隨/匯出；CLI 捷徑顯示說明後保留命令提示字元。
-- 新增有界軌跡讀取與 daemon 監聽 RPC，區分用戶端報告與系統證據。
-- 新增瀏覽器 E2E、覆蓋率、Tauri 建置與安全的安裝程式 E2E。
-- [完整中英說明與剩餘發佈門檻](v0.1.1.md)。
+- GUI 擴展為七段式旅程：工作階段 → 觀測 → 探查 → 回放 → 比較 → 輔助 → 介入。
+- 新增功能表、快捷鍵、斷點優先探查、回放控制、雙會話比較、證據錨定輔助分析與常駐健康度指標。
+- 新增工作區覆蓋、observe-only 鎖定與 GUI 僅走 RPC 的架構契約。
+- Rust crate、CLI、GUI、Tauri、安裝器、payload 與 lockfile 版本統一為 `0.2.5`。
+- 更新三語快速入門、監聽指南與發佈說明。
+- 明確 `v1.0.0` 之前均為 beta/測試版，並繼續保持 observe-only 邊界。
 
-## 0.1.0
+完整說明：[繁體中文](v0.2.5_TW.md) · [English](v0.2.5.en-US.md) · [简体中文](v0.2.5.md)。
 
-- 交付 observe-only 的 G0–G7 發行列車：ETW 擷取、Harness 接入、因果對齊、CLI、daemon、多執行階段適配與 Tauri GUI。
-- 增加 GUI/CLI 一體 NSIS per-user 安裝器：使用者 PATH、HKCU 登錄、`.cllens` 關聯、捷徑、WebView2 引導、升級/降級參數與 `.trash` 解除安裝兜底。
-- 增加 x64 安裝器 E2E：靜默安裝、版本/doctor、GUI 冷啟動、解除安裝五項殘留檢查與重裝。
-- 增加 SPDX SBOM 與 Azure Trusted Signing 阻斷式發行流程；沒有正式憑據時只生成 `-dev`。
-- 增加 English (US)、简体中文、繁體中文介面、安裝器文案與文件導航。
-- 介入層 `advise`/`enforce` 與 Jev 決策後端順延到 v0.2.0。
+## 0.2.0 測試版（2026-10-31）
 
-第一版是望遠鏡，不是方向盤：它記錄並解釋，卻不觸碰被觀測的程序。
+- 接入 Windows ETW bridge、四 provider 消費執行緒、TDH 解碼、路徑駐留、FileObject 追蹤與有界遺失統計。
+- 增加 WAL SQLite 履約圖持久化、FTS5 索引、離線 `.cllens` 開啟與持久化 `why` 鏈。
+- 增加對齊與 spool 恢復的 Criterion 基線。
+- 發佈證據閉環方案，明確擷取層限制。
+
+## 0.1.2 測試版（2026-10-26）
+
+- 增加 Jev、OpenAI-compatible、Anthropic-compatible 與 Ollama 的可選證據輔助分析。
+- 增加 GUI/CLI 設定：endpoint、模型、隱私、逾時、保留數量和語言。
+- 把真實 ETW、mmap ring 與持久化缺口寫成可核查方案，不把演示軌跡冒充核心證據。
+
+## 0.1.1 測試版（2026-10-25）
+
+- 增加首次監聽精靈、17 家產品模板與 Others、時間線篩選、搜尋和 GUI/CLI 對等檢查。
+- 增加 x64 安裝器 E2E、解除安裝殘留檢查與多語文件。
+
+## 0.1.0 測試版（2026-10-25）
+
+- 建立 observe-only 架構：一個 daemon、兩個 RPC 前端與最小特權 capture 邊界。
+- 增加初版 CLI、GUI 外殼、契約、fixtures 與發佈門檻文件。

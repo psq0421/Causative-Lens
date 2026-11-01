@@ -3,7 +3,7 @@
 on:
   workflow_dispatch:
   push:
-    tags: ['v0.1.*']
+    tags: ['v0.2.*']
 
 permissions:
   contents: read
@@ -12,7 +12,7 @@ jobs:
   x64-release:
     # Pre-1.0 beta prereleases are explicitly authorized by the maintainer.
     # Keep the production signing gate separate from the unsigned beta channel.
-    if: github.event_name == 'workflow_dispatch' || !startsWith(github.ref_name, 'v0.')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref_name, 'v0.2.')
     runs-on: windows-latest
     env:
       # The Trusted Signing DLib and metadata are provisioned by the protected
@@ -29,10 +29,10 @@ jobs:
         run: choco install nsis --no-progress --yes
       - name: Build, sign and exercise x64 release
         shell: pwsh
-        run: ./installer/build-release.ps1 -Arch x64 -Version 0.1.1
+        run: ./installer/build-release.ps1 -Arch x64 -Version 0.2.5
       - name: Generate SBOM
         shell: pwsh
-        run: ./installer/generate-sbom.ps1 -Version 0.1.1
+        run: ./installer/generate-sbom.ps1 -Version 0.2.5
       - name: Upload release evidence
         uses: actions/upload-artifact@v4
         with:

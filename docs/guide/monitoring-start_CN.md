@@ -1,72 +1,71 @@
-﻿# v0.2.0锛氱涓€娆＄洃鍚?
+﻿# v0.2.5：第一次监听
 
-[English](monitoring-start.md) 路 [绠€浣撲腑鏂嘳(monitoring-start_CN.md) 路 [绻侀珨涓枃](monitoring-start_TW.md)
+[English](monitoring-start.md) · [简体中文](monitoring-start_CN.md) · [繁體中文](monitoring-start_TW.md)
 
-> 缁欑▼搴忕暀涓€鏉″洖瀹剁殑绾跨储銆傚厛鐪嬭杞ㄨ抗锛屽啀璁ㄨ璇佹嵁銆?
+> 给程序留一条回家的线索。先看见轨迹，再讨论证据。
 
-## 瀹夎涓庢墦寮€
+## 安装与打开
 
-杩愯 x64 `-dev` 娴嬭瘯瀹夎鍖呫€傚畨瑁呬负 per-user锛屼笉闇€瑕佺鐞嗗憳鏉冮檺銆傚弻鍑绘闈?CausativeLens锛汣LI 鍦ㄥ紑濮嬭彍鍗曠殑 CausativeLens CLI 涓墦寮€锛屽府鍔╃粨鏉熷悗淇濈暀鍛戒护鎻愮ず绗︺€傚彸涓婅鍙垏鎹㈢畝浣撲腑鏂囥€佺箒楂斾腑鏂囥€丒nglish (US) 鍜屾繁娴呰壊銆侫RM64 鏆傜紦锛屾祴璇曞寘灏氭棤姝ｅ紡 Authenticode 绛惧悕銆?
+运行 x64 `-dev` 测试安装包。安装为当前用户生效；双击桌面快捷方式打开 GUI，开始菜单中的 CLI 快捷方式会在帮助结束后保留终端窗口。标题栏可以切换简体中文、繁體中文、English (US) 与浅色/深色外观。ARM64 暂缓，测试包没有生产级 Authenticode 签名。
 
-## 涓夋寮€濮?
+## 三步开始
 
-1. 鐐瑰嚮 **鐩戝惉 鈫?璇烽€夋嫨浣犱娇鐢ㄧ殑杞欢**銆備緥濡傞€?OpenClaw锛岀偣鍑讳笅涓€姝ャ€?
-2. 鐐瑰嚮 **娴忚**锛岄€夋嫨椤圭洰銆佹棩蹇楁垨瀹夎鏂囦欢澶广€傞粯璁ゆ鏌ヨ杞欢鐨勭敤鎴锋棩蹇楃洰褰曪紝鍙兘鍖呭惈鍏朵粬浼氳瘽锛涗笉甯屾湜璇诲彇鏃惰鍙栨秷鍕鹃€夈€傚彇娑堚€滆浇鍏ュ凡鏈夎繎鏈熻建杩光€濆彲浠ュ彧璇讳粠鐜板湪璧锋柊澧炵殑鍐呭銆?
-3. 鐐瑰嚮 **妫€鏌ョ洰褰?*锛屾牳瀵瑰疄闄呮壂鎻忚寖鍥翠笌鍊欓€夋枃浠讹紝鍐嶇偣鍑?**寮€濮嬬洃鍚?*銆傜洰褰曚负绌烘椂鍙互杩涘叆绛夊緟鐘舵€侊紝鐒跺悗璁?Agent 鍋氫竴涓皬浠诲姟锛屾垨鎸変笅琛ㄥ鍑鸿建杩广€?
+1. 打开 **监听 → 请选择你使用的软件**，例如选择 OpenClaw，然后点击 **下一步**。
+2. 点击 **浏览**，选择项目、日志或安装文件夹；只想读取新增内容时，取消“读取已有近期轨迹”。
+3. 点击 **检查目录**，确认实际扫描根和候选文件，再点击 **开始监听**。目录为空时可以保持等待，然后让 Agent 完成一个小任务，或使用下面的通用 JSONL 示例。
 
-瀹夎鐩綍鏈繀鍖呭惈鏃ュ織銆傞€夊ソ鐩綍浠呰〃绀洪厤缃氨缁紱鍙湁鈥滃凡璇嗗埆璁板綍鈥濆闀挎墠璇存槑杞ㄨ抗杩涘叆銆傛湭鐭?schema/鍧?JSON 杩涘叆鍋ュ悍閿欒璁℃暟锛屼笉鑳藉亣瑁呭吋瀹广€傜▼搴忎笉鎵ц Agent 鍛戒护銆佷笉淇敼瀹冪殑閰嶇疆銆佷笉璋冪敤浜?API銆?
+配置了目录不代表已经接入。请观察“已识别记录”计数和健康度条；未知 schema、坏 JSON、轮转和截断都会保留为可见状态。监听器不会启动 Agent、修改配置或调用云端 API。
 
-## 20 椤规ā鏉夸笌杈撳叆鍑嗗
+## 模板与输入准备
 
-17 瀹朵骇鍝佷腑 WorkBuddy 鍒嗗浗鍐?鍥介檯娓犻亾锛屽彟淇濈暀 DeepSeek 涓?Others锛屽叡 20 涓€夋嫨椤广€傛寜鍐呭璇嗗埆锛屼笉寮哄埗闄愬埗鐗堟湰锛涙湭鐭ョ粨鏋勪粛浼氭槑纭姤閿欍€備互涓嬪唴缃彁绀轰笉鏄繎涓変釜鏈堝叏閮ㄧ湡瀹炵増鏈殑楠岃瘉鐭╅樀銆?
+共有 20 个选项：17 家产品（WorkBuddy 国内版和国际版分开）以及 DeepSeek Harness、Others。模板按内容识别，不强制锁定版本；未知格式会明确报告。模板不代表最近三个月每个厂商版本都经过认证。
 
-| 杞欢 | 杈撳叆鍑嗗 |
+| 软件 | 输入准备 |
 |---|---|
-| Hermes Agent | 閫夋嫨 Hermes 浼氳瘽瀵煎嚭鎴?observer 鏃ュ織鐩綍銆俿tate.db 涓嶈兘浣滀负鏂囨湰璇诲彇锛涙病鏈夎建杩规椂璇峰厛瀵煎嚭浼氳瘽銆?|
-| Claude Code | 鑷姩璇嗗埆 Claude 娑堟伅鍙?tool_use銆侰LI 鍙敤 stream-json锛汭DE/Desktop 涓庤繙绋嬪伐鍏烽渶鐙珛纭銆?|
-| OpenAI Codex | 璇嗗埆 Codex exec JSONL 鍙婁細璇濊建杩癸紱涓嶄細鑾峰彇闅愯棌鎬濈淮閾俱€?|
-| Google Antigravity CLI | 璇诲彇褰撳墠鐗堟湰瀵煎嚭鐨勭粨鏋勫寲杞ㄨ抗銆備笉瑕佸皢 Gemini CLI 鍙傛暟濂楃粰 Antigravity銆?|
-| OpenClaw | 璇烽€夋嫨 gateway 鐨勪細璇濊建杩圭洰褰曘€備粎鏈夌綉鍏冲仴搴锋棩蹇楁椂涓嶄細浜х敓宸ュ叿鏂█锛涜繙绔姩浣滀笉鏄湰鏈?ETW銆?|
-| Manus | 璇烽€夋嫨浠诲姟娲诲姩瀵煎嚭鐩綍銆備簯浠诲姟鏈€缁堟姤鍛婁笉鑳戒唬鏇块€愭宸ュ叿杞ㄨ抗鎴栨湰鏈虹郴缁熻瘉鎹€?|
-| AutoGPT | 閫夋嫨瀹為檯 worker 鐨勪换鍔℃棩蹇楃洰褰曘€侰lassic/Platform/瀹瑰櫒鍒嗗埆纭锛涙櫘閫氭棩蹇楀彧鏄剧ず鏂囨湰銆?|
-| CodeBuddy | 璇诲彇 CodeBuddy stream-json 鎴栦細璇濆鍑猴紱淇濈暀姝ｅ父鏉冮檺璁剧疆銆?|
-| WorkBuddy锛堝浗鍐呯増锛?| 閫夋嫨鍥藉唴鐗堜换鍔℃椿鍔ㄥ鍑虹洰褰曪紱涓庡浗闄呯増鐙珛璇嗗埆锛屼笉鍋囪瀛樺湪鍚屽悕 CLI銆?|
-| WorkBuddy International | 閫夋嫨鍥介檯鐗堜换鍔℃椿鍔ㄥ鍑虹洰褰曪紱涓嶈娣峰叆鍥藉唴鐗堜細璇濄€?|
-| Trae Agent / TRAE CLI | 閫夋嫨瀹為檯鎵ц鍣ㄨ建杩癸紱IDE銆佸紑婧?Agent 涓?CLI 鐨勫崗璁彲鑳戒笉鍚屻€?|
-| Aider | 璇嗗埆鑱婂ぉ鍘嗗彶 Markdown 鍜岀粨鏋勫寲瀵煎嚭锛涜亰澶╂枃瀛椾笉浼氳浼€犳垚瀹為檯鍐欐枃浠躲€?|
-| ZCode | 閫夋嫨 ZCode 瀹㈡埛绔建杩广€傚叾浠栧鎴风浠呮洿鎹㈡櫤璋辨ā鍨嬫椂锛屽簲閫夋嫨瀹為檯瀹㈡埛绔ā鏉裤€?|
-| Qoder CN / Qoder CLI | 閫夋嫨 CLI stream-json 鎴栧綋鍓嶆笭閬撲細璇濆鍑猴紱CN/鍥介檯鐗堟湰闇€鍒嗗埆楠岃瘉銆?|
-| CodeArts Agent CLI | 閫夋嫨褰撳墠鍙戣鐗堢殑缁撴瀯鍖栨椿鍔ㄥ鍑猴紝璁板綍鍗庝负浜戝尯鍩熷拰鎵ц浣嶇疆銆?|
-| MiniMax Code CLI | 鑻ユ槸 Claude/Codex 浣跨敤 MiniMax 妯″瀷锛岃閫夋嫨瀵瑰簲瀹㈡埛绔紱鐙珛 CLI 閫夋嫨瀹冪殑杞ㄨ抗鐩綍銆?|
-| GitHub Copilot CLI | 閫夋嫨 standalone Copilot 鐨勪細璇濅簨浠剁洰褰曪紱鏃?gh 鎵╁睍銆両DE 涓庝簯绔换鍔＄嫭绔嬮獙璇併€?|
-| Cursor CLI | 閫夋嫨 Cursor agent 鐨?stream-json 杈撳嚭鐩綍锛涗笉瑕佸皢缂栬緫鍣ㄥ惎鍔ㄥ櫒褰撲綔鎵ц鍣ㄣ€?|
-| DeepSeek Harness | 閫夋嫨瑙勮寖 Harness JSONL 鎴栫粨鏋勫寲宸ュ叿杞ㄨ抗銆?|
-| Others / 鍏朵粬杞欢 | 鑷姩鎺㈡祴閫氱敤 Harness銆丱penAI/Anthropic 宸ュ叿娑堟伅鍙婃枃鏈紱鏈煡 JSON 浼氳鏁板苟鎻愮ず锛屼笉浼€犻€傞厤鎴愬姛銆?|
+| Hermes Agent | 选择 session export 或 observer 日志；只有 `state.db` 时先导出 |
+| Claude Code | 选择 message/tool_use、CLI stream-json 或支持的 transcript |
+| OpenAI Codex | 选择 exec JSONL 与 session trace；不会读取私有思维链 |
+| Google Antigravity CLI | 选择当前版本导出的结构化轨迹 |
+| OpenClaw | 选择 gateway session transcript；健康日志本身不产生工具断言 |
+| Manus | 选择 task activity export；云端报告不是本机系统证据 |
+| AutoGPT | 选择实际 worker 日志并确认 Classic/Platform/容器变体 |
+| CodeBuddy | 选择 stream-json 或 session export |
+| WorkBuddy（国内版） | 选择国内版活动导出，与国际版分开识别 |
+| WorkBuddy International | 选择国际版活动导出 |
+| Trae Agent / TRAE CLI | 选择 executor trace；IDE、开源 Agent、CLI 协议可能不同 |
+| Aider | 选择 chat-history Markdown 或结构化导出 |
+| ZCode | 选择 ZCode 客户端轨迹，不要把其他客户端误选为 ZCode |
+| Qoder CN / Qoder CLI | 选择 CLI stream-json 或渠道导出，CN/国际版分开验证 |
+| CodeArts Agent CLI | 选择结构化活动导出，并记录区域与执行主机 |
+| MiniMax Code CLI | 选择独立 CLI 轨迹目录；使用 MiniMax 模型不等于 MiniMax CLI |
+| GitHub Copilot CLI | 选择 standalone Copilot 会话事件 |
+| Cursor CLI | 选择 Cursor agent stream-json，不要选编辑器启动器 |
+| DeepSeek Harness | 选择规范 Harness JSONL 或结构化工具轨迹 |
+| Others | 使用通用 Harness/OpenAI/Anthropic 工具消息与文本，未知 JSON 只计数不冒充兼容 |
 
-## 鏃堕棿绾裤€佽鎯呬笌鏌ヨ
+## 时间线、详情与查询
 
-- **鍏ㄩ儴 / 鏂█ / 鏂囦欢 / 缃戠粶**锛氱偣鍑荤瓫閫夌湡瀹炶褰曪紝璁℃暟瀵瑰簲鏈€杩?5,000 鏉¤鍥俱€傛悳绱㈠彲鍙犲姞绛涢€夛紝娌℃湁缁撴灉鏃舵樉绀虹┖鎬併€?
-- **鏉ユ簮**锛欰gent 杞ㄨ抗鏄鎴风鎶ュ憡锛屾柇瑷€鏄彁鍙栫殑鎰忓浘锛岀郴缁熻瘉鎹』鏉ヨ嚜鐪熷疄閲囬泦銆傚綋鍓?GUI 鐩戝惉涓嶈繛鎺?ETW锛屽饱绾︿繚鎸佹湭瑙傛祴銆?
-- 鐐瑰嚮璁板綍鎴栨寜 Enter/绌烘牸鎵撳紑璇︽儏锛孍scape 鍏抽棴锛屽鍒?JSON 渚夸簬璇婃柇銆傝窡闅忔寜閽帶鍒舵槸鍚︽粴鍔ㄥ埌鏈€鏂拌褰曪紱瀵煎嚭淇濆瓨褰撳墠瑙嗗浘 JSON銆?
-- **灞ョ害鍥?*鏄剧ず鎻愬彇鐨勬柇瑷€锛屼笉鐢讳笉瀛樺湪鐨勮瘉鎹竟銆?*鏌ヨ**杈撳叆瀹屾暣璺緞锛岃幏鍙?daemon 鐨勪簲娈靛洜鏋滈摼銆?
-- **鍋滄鐩戝惉**閲婃斁璇诲彇鍣紝浠嶅彲鏌ョ湅璁板綍銆侴UI 鍏抽棴鍚?daemon 缁х画璇诲彇锛岄噸寮€鍙仮澶嶃€俤aemon 閫€鍑轰細娓呯┖鍐呭瓨瑙嗗浘锛岃鍙婃椂瀵煎嚭锛汮SON 瀵煎嚭涓嶆槸 `.cllens` 鎸佷箙浼氳瘽銆?
+- **全部 / 断言 / 文件 / 网络**筛选真实记录；搜索会与当前筛选叠加。
+- **来源**区分 Agent 报告、提取意图和系统证据。此监听流没有 ETW 连接时，履约判定保持未观测。
+- 点击记录或按 Enter/Space 查看 JSON 详情，按 Escape 关闭；导出保存当前 JSON 视图。
+- **Graph** 只显示意图和真实证据边；**Query** 使用完整路径请求 daemon 的五段式 `why` 链。
+- 停止监听会释放 reader 但保留记录；退出 daemon 会清空内存视图，因此请尽早导出，JSON 不是持久化 `.cllens` 会话。
 
-## Others锛氶€氱敤妯℃澘
+## Others：通用输入
 
-鍦ㄩ€夊畾鐩綍鍒涘缓 `trace.jsonl`锛屾瘡琛屼竴涓?JSON锛?
+在选择的目录创建 `trace.jsonl`，每行一个对象：
 
 ```jsonl
 {"tool_name":"read","args":{"path":"C:\\demo\\config.yaml"}}
 {"tool_name":"connect","args":{"target":"api.example.com:443"}}
 ```
 
-杩欏彧楠岃瘉杞ㄨ抗鎺ュ叆銆傛妸鏂囦欢鍚嶅啓杩涘伐鍏峰弬鏁颁笉鎰忓懗鐫€鎿嶄綔鐪熺殑鍙戠敓锛岀▼搴忎笉浼氬埗閫?ETW 璇佹嵁銆侸SONL 璇诲畬涓€琛屾墠瑙ｆ瀽锛孞SON 瀵煎嚭鎸夋暣涓揩鐓ц鍙栵紝鏂囨湰/Markdown 鍙睍绀烘枃鏈€?
+这只验证轨迹接入，不证明真实文件或网络 I/O。JSONL 等待完整行；普通文本和 Markdown 仅作为文本展示。
 
-## 鎺掗殰涓庝笂闄?
+## 排查与上限
 
-鐩綍鏃犳潈闄愶細閲嶆柊閫夊彲璇荤洰褰曘€傜洰褰曟棤鏃ュ織锛氭寜妯℃澘瀵煎嚭鎴栨槑纭嬀閫夌敤鎴锋棩蹇椼€係QLite `state.db` 涓嶆寜鏂囨湰鎵弿銆傝褰曞緟妫€鏌ワ細鐪嬪仴搴蜂俊鎭腑鐨勬湭鐭ョ粨鏋勩€佹埅鏂拰瓒呴檺鎻愮ず銆備簯绔€乄SL銆佸鍣ㄥ彧鑳芥帴鏀跺叕寮€瀵煎嚭鐨勮建杩癸紝鏈満涓嶆槸杩滅閲囬泦鍣ㄣ€傛棫 CLI 蹇嵎鏂瑰紡浠嶅叧闂椂锛岀敤鏂板畨瑁呭櫒瑕嗙洊瀹夎锛屾垨鍦ㄧ粓绔繍琛?`clens --help`銆?
+目录无权限时重新选择可读目录；没有记录时导出日志或明确勾选 profile 日志。检查健康度中的未知 schema、轮转、截断和跳过字节。云端、WSL、容器和远程网关只能通过导出的报告显示。
 
-鎵弿涓婇檺锛氭繁搴?6銆?192 椤广€?28 鏂囦欢锛涙瘡杞瘡鏂囦欢 256KiB锛汮SON 蹇収鏈€澶?256KiB锛涢槦鍒?4096锛涜鍥?5000 鏉°€傝秴闄愬拰璺宠繃瀛楄妭鍦ㄥ仴搴蜂俊鎭腑鍙銆備笉浼氳鍙栧嚟鎹枃浠舵垨淇敼 Agent銆?
+扫描上限为深度 6、8192 个条目、128 个文件、单文件 256 KiB、队列 4096、视图 5000 行；超限和跳过字节会在健康度中显示。
 
-[17 瀹惰缁嗚建杩硅幏鍙栨暀绋嬶紙v0.1.0 鑳藉姏鏍告煡鑳屾櫙锛塢(runtime-integration_CN.md) 路 [鍙樻洿璁板綍](../release/CHANGELOG_CN.md)
-
+[厂商轨迹准备](runtime-integration_CN.md) · [更新日志](../release/CHANGELOG_CN.md)
