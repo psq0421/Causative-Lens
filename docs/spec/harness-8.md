@@ -38,6 +38,11 @@ pub trait HarnessAdapter: Send {
 | `connect`/`bind`/`listen` | 对应网络断言 |
 | `shell`/`exec` | 使用内置模板 `rm/mv/cp/curl/ssh`；未命中则交语义层 |
 
+规则 catalog 还保留 `resource_budget`/`budget`、`network_allowlist`/`network_policy`、
+`data_flow`/`provenance` 与 `idempotent`/`idempotency`。这些模板编译为类型化声明，
+而不是把名字当作普通自由文本；资源预算和数据流需要后续窗口聚合，幂等声明在只有
+单个事件时保持不可判定，不能凭一个事件输出 Fulfilled。
+
 断言 ID 使用 `(harness_log_id, line_no, slot_no)` 稳定生成。一个 tool 产生多条断言时 slot 固定且可重放。路径先规范化为跨平台字符串；Shell 模板只解析元数据，不读取或记录文件内容。
 
 ## 8.3 语义层边界

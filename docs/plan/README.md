@@ -63,5 +63,6 @@
 - `task-cards/T0205-daemon-ring-reader.md`：daemon ring reader 与兼容桥
 - `task-cards/T0206-capture-benchmark-release-gate.md`：采集端到端基准与发布门
 - `task-cards/T0207-storage-payload-boundary-and-batch.md`：SQLite 明细边界、spool 定位与原子批量事务
+- `task-cards/T0208-重排断言模板审计链与真实attach.md`：64ms 重排迟到健康度、断言模板族、session manifest 重算链与真实 ETW attach/rundown
 
 

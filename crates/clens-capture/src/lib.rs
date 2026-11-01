@@ -525,8 +525,160 @@ pub fn session_name(suffix: &str) -> String {
 pub struct CaptureLifecycle {
     active_sessions: Vec<String>,
     rundown_requested: bool,
+    attached_pid: Option<u32>,
     #[cfg(windows)]
     realtime_consumers: Vec<RealtimeConsumer>,
+    #[cfg(windows)]
+    control_sessions: Vec<NativeEtwSession>,
+}
+
+#[cfg(windows)]
+struct NativeEtwSession {
+    name: String,
+    name_wide: Vec<u16>,
+    handle: windows_sys::Win32::System::Diagnostics::Etw::CONTROLTRACE_HANDLE,
+}
+
+#[cfg(windows)]
+impl std::fmt::Debug for NativeEtwSession {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("NativeEtwSession")
+            .field("name", &self.name)
+            .field("handle", &self.handle.Value)
+            .finish()
+    }
+}
+
+#[cfg(windows)]
+fn provider_guid(logical_name: &str) -> Option<windows_sys::core::GUID> {
+    match logical_name {
+        "Process" => Some(windows_sys::core::GUID::from_u128(
+            0x22fb2cd6_0e7b_422b_a0c7_2fad1fd0e716,
+        )),
+        "File" => Some(windows_sys::core::GUID::from_u128(
+            0xedd08927_9cc4_4e65_b970_c2560fb5c289,
+        )),
+        "Registry" => Some(windows_sys::core::GUID::from_u128(
+            0x70eb4f03_c1de_4f73_a051_33d13d5413bd,
+        )),
+        "Network" => Some(windows_sys::core::GUID::from_u128(
+            0x7dd42a49_5329_4832_8dfd_43d979153a88,
+        )),
+        _ => None,
+    }
+}
+
+#[cfg(windows)]
+fn native_start_session(
+    spec: &EtwSessionSpec,
+    attached_pid: Option<u32>,
+) -> std::io::Result<NativeEtwSession> {
+    use std::mem::size_of;
+    use windows_sys::Win32::System::Diagnostics::Etw::{
+        EnableTraceEx2, StartTraceW, ENABLE_TRACE_PARAMETERS, EVENT_CONTROL_CODE_ENABLE_PROVIDER,
+        EVENT_FILTER_DESCRIPTOR, EVENT_FILTER_TYPE_PID, EVENT_TRACE_PROPERTIES,
+        EVENT_TRACE_REAL_TIME_MODE, WNODE_FLAG_TRACED_GUID,
+    };
+    let name_wide: Vec<u16> = spec.name.encode_utf16().chain(std::iter::once(0)).collect();
+    let properties_size = size_of::<EVENT_TRACE_PROPERTIES>();
+    let property_words = (properties_size + name_wide.len() * 2).div_ceil(size_of::<u64>());
+    let mut properties_buffer = vec![0_u64; property_words];
+    let properties = properties_buffer
+        .as_mut_ptr()
+        .cast::<EVENT_TRACE_PROPERTIES>();
+    unsafe {
+        (*properties).Wnode.BufferSize = (properties_buffer.len() * size_of::<u64>()) as u32;
+        (*properties).Wnode.Flags = WNODE_FLAG_TRACED_GUID;
+        (*properties).Wnode.ClientContext = 1;
+        (*properties).LogFileMode = EVENT_TRACE_REAL_TIME_MODE;
+        (*properties).MinimumBuffers = 64;
+        (*properties).MaximumBuffers = 256;
+        (*properties).LoggerNameOffset = properties_size as u32;
+        std::ptr::copy_nonoverlapping(
+            name_wide.as_ptr().cast::<u8>(),
+            properties_buffer
+                .as_mut_ptr()
+                .cast::<u8>()
+                .add(properties_size),
+            name_wide.len() * 2,
+        );
+    }
+    let mut handle = windows_sys::Win32::System::Diagnostics::Etw::CONTROLTRACE_HANDLE::default();
+    let start = unsafe { StartTraceW(&mut handle, name_wide.as_ptr(), properties) };
+    if start != 0 {
+        return Err(std::io::Error::from_raw_os_error(start as i32));
+    }
+    let guid = provider_guid(
+        sessions()
+            .iter()
+            .find(|session| session.session_name == spec.name)
+            .map_or("", |session| session.logical_name),
+    )
+    .ok_or_else(|| std::io::Error::other("provider GUID is not in the capture contract"))?;
+    let pid_filter = attached_pid.map(|pid| vec![pid]);
+    let filter = pid_filter.as_ref().map(|pids| EVENT_FILTER_DESCRIPTOR {
+        Ptr: pids.as_ptr() as usize as u64,
+        Size: (pids.len() * size_of::<u32>()) as u32,
+        Type: EVENT_FILTER_TYPE_PID,
+    });
+    let parameters = filter.as_ref().map(|descriptor| ENABLE_TRACE_PARAMETERS {
+        Version: 1,
+        EnableProperty: 0,
+        ControlFlags: 0,
+        SourceId: windows_sys::core::GUID::from_u128(0),
+        EnableFilterDesc: descriptor as *const EVENT_FILTER_DESCRIPTOR
+            as *mut EVENT_FILTER_DESCRIPTOR,
+        FilterDescCount: 1,
+    });
+    let enable = unsafe {
+        EnableTraceEx2(
+            handle,
+            &guid,
+            EVENT_CONTROL_CODE_ENABLE_PROVIDER,
+            0xff,
+            spec.keywords,
+            0,
+            0,
+            parameters.as_ref().map_or(std::ptr::null(), |value| {
+                value as *const ENABLE_TRACE_PARAMETERS
+            }),
+        )
+    };
+    if enable != 0 {
+        let _ = unsafe {
+            windows_sys::Win32::System::Diagnostics::Etw::ControlTraceW(
+                handle,
+                name_wide.as_ptr(),
+                std::ptr::null_mut(),
+                windows_sys::Win32::System::Diagnostics::Etw::EVENT_TRACE_CONTROL_STOP,
+            )
+        };
+        return Err(std::io::Error::from_raw_os_error(enable as i32));
+    }
+    Ok(NativeEtwSession {
+        name: spec.name.clone(),
+        name_wide,
+        handle,
+    })
+}
+
+#[cfg(windows)]
+fn native_stop_session(session: &NativeEtwSession) -> std::io::Result<()> {
+    use windows_sys::Win32::System::Diagnostics::Etw::{ControlTraceW, EVENT_TRACE_CONTROL_STOP};
+    let result = unsafe {
+        ControlTraceW(
+            session.handle,
+            session.name_wide.as_ptr(),
+            std::ptr::null_mut(),
+            EVENT_TRACE_CONTROL_STOP,
+        )
+    };
+    if result == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::from_raw_os_error(result as i32))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -573,9 +725,14 @@ impl CaptureLifecycle {
         self.rundown_requested
     }
 
+    pub fn attached_pid(&self) -> Option<u32> {
+        self.attached_pid
+    }
+
     /// Records the control-plane request that must be followed by provider
-    /// rundown keywords on Windows. Keeping the state explicit prevents an
-    /// attach caller from accidentally claiming complete process/file state.
+    /// rundown capture-state request on Windows. Keeping the state explicit
+    /// prevents an attach caller from accidentally claiming complete
+    /// process/file state.
     pub fn request_rundown(&mut self) -> std::io::Result<()> {
         if self.active_sessions.is_empty() {
             return Err(std::io::Error::new(
@@ -583,33 +740,106 @@ impl CaptureLifecycle {
                 "cannot request rundown before ETW sessions are active",
             ));
         }
+        #[cfg(windows)]
+        {
+            use windows_sys::Win32::System::Diagnostics::Etw::{
+                EnableTraceEx2, EVENT_CONTROL_CODE_CAPTURE_STATE,
+            };
+            for session in &self.control_sessions {
+                let Some(logical_name) = sessions()
+                    .iter()
+                    .find(|candidate| candidate.session_name == session.name)
+                    .map(|candidate| candidate.logical_name)
+                else {
+                    continue;
+                };
+                // Process and File providers expose the state needed for
+                // attach: process/image rundown and FileObject/path rundown.
+                // Registry and Network have no equivalent state snapshot in
+                // the contract, so they remain live-only.
+                if !matches!(logical_name, "Process" | "File") {
+                    continue;
+                }
+                let guid = provider_guid(logical_name).ok_or_else(|| {
+                    std::io::Error::other("provider GUID is not in the capture contract")
+                })?;
+                let result = unsafe {
+                    EnableTraceEx2(
+                        session.handle,
+                        &guid,
+                        EVENT_CONTROL_CODE_CAPTURE_STATE,
+                        0xff,
+                        0,
+                        0,
+                        0,
+                        std::ptr::null(),
+                    )
+                };
+                if result != 0 {
+                    return Err(std::io::Error::from_raw_os_error(result as i32));
+                }
+            }
+        }
         self.rundown_requested = true;
         Ok(())
     }
 
     #[cfg(windows)]
     pub fn start_all(&mut self) -> std::io::Result<()> {
+        self.start_all_for_pid(None)
+    }
+
+    #[cfg(windows)]
+    fn start_all_for_pid(&mut self, attached_pid: Option<u32>) -> std::io::Result<()> {
         cleanup_stale_sessions()?;
         for spec in session_specs() {
-            let output = start_session(&spec)?;
-            if !output.status.success() {
-                let _ = self.stop_all();
-                return Err(std::io::Error::other(format!(
-                    "ETW session {} failed to start: {}",
-                    spec.name,
-                    String::from_utf8_lossy(&output.stderr)
-                )));
-            }
+            let native = match native_start_session(&spec, attached_pid) {
+                Ok(native) => native,
+                Err(error) => {
+                    let _ = self.stop_all();
+                    return Err(error);
+                }
+            };
+            self.control_sessions.push(native);
             self.active_sessions.push(spec.name);
         }
-        self.request_rundown()?;
+        self.attached_pid = attached_pid;
         Ok(())
     }
 
+    /// Start a real attach capture scoped by the ETW PID filter. The rundown
+    /// request is sent after the provider sessions are enabled so process and
+    /// file state already present at attach time can be decoded before new
+    /// events are aligned.
+    #[cfg(windows)]
+    pub fn start_attach(
+        &mut self,
+        pid: u32,
+    ) -> std::io::Result<std::sync::mpsc::Receiver<RawEtwRecord>> {
+        if pid == 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "attach PID must be non-zero",
+            ));
+        }
+        let (sender, receiver) = std::sync::mpsc::sync_channel(8_192);
+        self.start_all_for_pid(Some(pid))?;
+        if let Err(error) = self.start_realtime_consumers(sender) {
+            let _ = self.stop_all();
+            return Err(error);
+        }
+        if let Err(error) = self.request_rundown() {
+            let _ = self.stop_all();
+            return Err(error);
+        }
+        Ok(receiver)
+    }
+
     /// Attach one ProcessTrace consumer to every realtime logger. Session
-    /// creation remains separate so a caller can diagnose provider startup
-    /// without consuming, while production callers use this immediately after
-    /// `start_all` and receive decoded EVENT_RECORDs through the bounded queue.
+    /// Creation remains separate so a caller can diagnose provider startup
+    /// without consuming. Production callers invoke this before requesting
+    /// rundown, so capture-state events cannot be emitted into an unconsumed
+    /// realtime session.
     #[cfg(windows)]
     pub fn start_realtime_consumers(
         &mut self,
@@ -648,6 +878,10 @@ impl CaptureLifecycle {
             let _ = self.stop_all();
             return Err(error);
         }
+        if let Err(error) = self.request_rundown() {
+            let _ = self.stop_all();
+            return Err(error);
+        }
         Ok(receiver)
     }
 
@@ -671,24 +905,16 @@ impl CaptureLifecycle {
         #[cfg(windows)]
         self.stop_realtime_consumers();
         #[cfg(windows)]
-        for name in self.active_sessions.drain(..).rev() {
-            match stop_session(&name) {
-                Ok(output) if output.status.success() => {}
-                Ok(output) => {
-                    first_error.get_or_insert_with(|| {
-                        std::io::Error::other(format!(
-                            "ETW session {name} failed to stop: {}",
-                            String::from_utf8_lossy(&output.stderr)
-                        ))
-                    });
-                }
-                Err(error) => {
-                    first_error.get_or_insert(error);
-                }
+        for session in self.control_sessions.drain(..).rev() {
+            if let Err(error) = native_stop_session(&session) {
+                first_error.get_or_insert(error);
             }
         }
+        #[cfg(windows)]
+        self.active_sessions.clear();
         #[cfg(not(windows))]
         self.active_sessions.clear();
+        self.attached_pid = None;
         self.rundown_requested = false;
         first_error.map_or(Ok(()), Err)
     }
@@ -799,6 +1025,9 @@ pub struct CaptureHealth {
     pub ring_spool_frames: u64,
     pub control_messages_rejected: u64,
     pub capture_failure_code: Option<&'static str>,
+    pub reorder_late_events: u64,
+    pub reorder_max_lateness_qpc: u64,
+    pub reorder_non_monotonic_releases: u64,
 }
 
 impl CaptureHealth {
@@ -824,6 +1053,14 @@ impl CaptureHealth {
 
     pub fn record_capture_failure(&mut self) {
         self.capture_failure_code = Some(clens_types::CAPTURE_FAILURE_CODE);
+    }
+
+    pub fn record_reorder_health(&mut self, health: ReorderHealth) {
+        self.reorder_late_events = self.reorder_late_events.max(health.late_events);
+        self.reorder_max_lateness_qpc = self.reorder_max_lateness_qpc.max(health.max_lateness_qpc);
+        self.reorder_non_monotonic_releases = self
+            .reorder_non_monotonic_releases
+            .max(health.non_monotonic_releases);
     }
 }
 
@@ -905,6 +1142,18 @@ impl ClockAnchor {
 pub const REORDER_WINDOW_MS: u64 = 64;
 pub const CLOCK_DRIFT_THRESHOLD_100NS_PER_SEC: i64 = 2_000;
 
+/// Health facts emitted by the bounded reordering stage. A late event is
+/// retained with its original QPC timestamp, but arrived after an older
+/// watermark had already been released. Consumers must avoid presenting a
+/// cross-thread before/after claim as absolute when this counter is non-zero.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ReorderHealth {
+    pub released_events: u64,
+    pub late_events: u64,
+    pub max_lateness_qpc: u64,
+    pub non_monotonic_releases: u64,
+}
+
 /// Buffers ETW events until the configured QPC disorder window has elapsed.
 /// The buffer is intentionally independent from ETW and can be fed by a TDH
 /// decoder or a fixture in exactly the same way.
@@ -913,6 +1162,8 @@ pub struct ReorderBuffer {
     window_qpc: u64,
     max_seen_qpc: Option<u64>,
     pending: Vec<SysEvent>,
+    last_emitted_qpc: Option<u64>,
+    health: ReorderHealth,
 }
 
 impl ReorderBuffer {
@@ -925,7 +1176,13 @@ impl ReorderBuffer {
             window_qpc,
             max_seen_qpc: None,
             pending: Vec::new(),
+            last_emitted_qpc: None,
+            health: ReorderHealth::default(),
         }
+    }
+
+    pub fn health(&self) -> ReorderHealth {
+        self.health
     }
 
     pub fn push(&mut self, event: SysEvent) -> Vec<SysEvent> {
@@ -939,7 +1196,9 @@ impl ReorderBuffer {
 
     pub fn flush_all(&mut self) -> Vec<SysEvent> {
         self.pending.sort_by_key(|event| (event.ts_qpc, event.seq));
-        std::mem::take(&mut self.pending)
+        let pending = std::mem::take(&mut self.pending);
+        self.record_releases(&pending);
+        pending
     }
 
     fn drain_ready(&mut self) -> Vec<SysEvent> {
@@ -951,7 +1210,30 @@ impl ReorderBuffer {
         let split = self
             .pending
             .partition_point(|event| event.ts_qpc <= watermark);
-        self.pending.drain(..split).collect()
+        let released: Vec<_> = self.pending.drain(..split).collect();
+        self.record_releases(&released);
+        released
+    }
+
+    fn record_releases(&mut self, events: &[SysEvent]) {
+        for event in events {
+            self.health.released_events = self.health.released_events.saturating_add(1);
+            if let Some(last) = self.last_emitted_qpc {
+                if event.ts_qpc < last {
+                    self.health.non_monotonic_releases =
+                        self.health.non_monotonic_releases.saturating_add(1);
+                    self.health.late_events = self.health.late_events.saturating_add(1);
+                    self.health.max_lateness_qpc = self
+                        .health
+                        .max_lateness_qpc
+                        .max(last.saturating_sub(event.ts_qpc));
+                }
+            }
+            self.last_emitted_qpc = Some(
+                self.last_emitted_qpc
+                    .map_or(event.ts_qpc, |last| last.max(event.ts_qpc)),
+            );
+        }
     }
 }
 
@@ -1047,6 +1329,7 @@ impl CaptureHealth {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
     use serde_json::json;
 
     #[test]
@@ -1230,6 +1513,26 @@ mod tests {
     }
 
     #[test]
+    fn health_keeps_reorder_uncertainty_visible() {
+        let mut health = CaptureHealth::default();
+        health.record_reorder_health(ReorderHealth {
+            released_events: 10,
+            late_events: 2,
+            max_lateness_qpc: 90,
+            non_monotonic_releases: 1,
+        });
+        health.record_reorder_health(ReorderHealth {
+            released_events: 12,
+            late_events: 1,
+            max_lateness_qpc: 120,
+            non_monotonic_releases: 1,
+        });
+        assert_eq!(health.reorder_late_events, 2);
+        assert_eq!(health.reorder_max_lateness_qpc, 120);
+        assert_eq!(health.reorder_non_monotonic_releases, 1);
+    }
+
+    #[test]
     fn pid_filter_keeps_exclusions_explicit() {
         let mut filter = CaptureFilter::default();
         filter.include_only([10, 20]);
@@ -1296,6 +1599,97 @@ mod tests {
                 .collect::<Vec<_>>(),
             [3]
         );
+    }
+
+    #[test]
+    fn reorder_buffer_converges_for_bounded_cross_provider_permutations() {
+        for seed in 0_u64..256 {
+            let mut order: Vec<usize> = (0..32).collect();
+            let mut state = seed.wrapping_add(1);
+            for index in (1..order.len()).rev() {
+                state = state
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1);
+                let swap = (state as usize) % (index + 1);
+                order.swap(index, swap);
+            }
+            let mut buffer = ReorderBuffer::with_qpc_frequency(1_000);
+            let mut released = Vec::new();
+            for index in order {
+                released.extend(buffer.push(fixture_event(index as u64, index as u64)));
+            }
+            released.extend(buffer.flush_all());
+            let timestamps: Vec<_> = released.iter().map(|event| event.ts_qpc).collect();
+            let mut sorted = timestamps.clone();
+            sorted.sort_unstable();
+            assert_eq!(timestamps, sorted, "seed {seed} reordered timestamps");
+            let mut sequences: Vec<_> = released.iter().map(|event| event.seq).collect();
+            sequences.sort_unstable();
+            assert_eq!(sequences, (0_u64..32).collect::<Vec<_>>());
+        }
+    }
+
+    #[test]
+    fn reorder_buffer_exposes_window_overflow_without_rewriting_qpc() {
+        let mut buffer = ReorderBuffer::with_qpc_frequency(1_000);
+        let _ = buffer.push(fixture_event(0, 0));
+        let _ = buffer.push(fixture_event(100, 1));
+        let _ = buffer.push(fixture_event(200, 3));
+        let released = buffer.push(fixture_event(10, 2));
+        assert_eq!(
+            released
+                .iter()
+                .map(|event| event.ts_qpc)
+                .collect::<Vec<_>>(),
+            [10]
+        );
+        assert_eq!(buffer.health().late_events, 1);
+        assert_eq!(buffer.health().max_lateness_qpc, 90);
+        assert_eq!(buffer.flush_all()[0].ts_qpc, 200);
+    }
+
+    proptest! {
+        #[test]
+        fn reorder_buffer_property_converges_for_generated_permutations(
+            keys in prop::collection::vec(any::<u32>(), 32)
+        ) {
+            let mut keyed: Vec<_> = keys
+                .into_iter()
+                .enumerate()
+                .map(|(index, key)| (key, index))
+                .collect();
+            keyed.sort_by_key(|(key, _)| *key);
+            let mut buffer = ReorderBuffer::with_qpc_frequency(1_000);
+            let mut released = Vec::new();
+            for (_, index) in keyed {
+                released.extend(buffer.push(fixture_event(index as u64, index as u64)));
+            }
+            released.extend(buffer.flush_all());
+            let timestamps: Vec<_> = released.iter().map(|event| event.ts_qpc).collect();
+            let mut sorted = timestamps.clone();
+            sorted.sort_unstable();
+            prop_assert_eq!(timestamps, sorted);
+            let mut sequences: Vec<_> = released.iter().map(|event| event.seq).collect();
+            sequences.sort_unstable();
+            prop_assert_eq!(sequences, (0_u64..32).collect::<Vec<_>>());
+        }
+
+        #[test]
+        fn reorder_buffer_always_converges_to_the_same_event_set(
+            order in prop::collection::vec(0_u64..128, 1..128)
+        ) {
+            let mut buffer = ReorderBuffer::with_qpc_frequency(1_000);
+            let mut released = Vec::new();
+            for (position, seq) in order.iter().copied().enumerate() {
+                released.extend(buffer.push(fixture_event(position as u64 * 100, seq)));
+            }
+            released.extend(buffer.flush_all());
+            let mut actual: Vec<_> = released.iter().map(|event| event.seq).collect();
+            let mut expected = order;
+            actual.sort_unstable();
+            expected.sort_unstable();
+            prop_assert_eq!(actual, expected);
+        }
     }
 
     #[cfg(not(windows))]

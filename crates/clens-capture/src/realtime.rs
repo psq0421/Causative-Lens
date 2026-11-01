@@ -117,7 +117,11 @@ impl ManualEventDecoder {
             pid: record.EventHeader.ProcessId,
             tid: record.EventHeader.ThreadId,
             kind,
-            is_rundown: false,
+            is_rundown: is_rundown_record(
+                provider,
+                record.EventHeader.EventDescriptor.Opcode,
+                properties,
+            ),
             payload,
         })
     }
@@ -137,6 +141,19 @@ impl ManualEventDecoder {
     pub fn file_object_table(&self) -> &FileObjectTable {
         &self.files
     }
+}
+
+fn is_rundown_record(provider: &str, opcode: u8, properties: &[String]) -> bool {
+    if properties.iter().any(|property| {
+        property.to_ascii_lowercase().contains("rundown")
+            || property.to_ascii_lowercase().contains("snapshot")
+    }) {
+        return true;
+    }
+    // Kernel Process/File providers use dedicated rundown opcodes in their
+    // manifest. Keep this conservative: only those two providers are allowed
+    // to classify an opcode as state replay; other providers remain live-only.
+    matches!((provider, opcode), ("Process", 3) | ("File", 36))
 }
 
 pub struct RealtimeConsumer {

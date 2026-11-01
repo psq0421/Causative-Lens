@@ -10,7 +10,7 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 |---|---|---|
 | Rust 核心 | 所有 workspace crate 都是 Rust；GUI 也只有 Tauri 壳 | 保持 Rust 作为核心实现语言。 |
 | 静态 CRT | 原来没有 target 配置 | 新增 `.cargo/config.toml`，x64/ARM64 MSVC 请求 `+crt-static`；需在 Windows release 链接阶段实测。 |
-| windows-rs/bytemuck | 当前 capture 仍用 `logman` 命令和 JSON fixture 解码，尚未接 StartTrace/TDH typed API | 不能宣称 ETW typed decoder 已完成；列入 G1 阻塞项，后续以 feature-gated `windows`/`bytemuck` 实现。 |
+| windows-rs/bytemuck | capture 已接 `StartTraceW`/`EnableTraceEx2`/`ProcessTrace` 与 TDH 字段读取；JSONL 仍是兼容桥，mmap ring 与手工 cursor 快路径尚未完成 | 真实提升权限 runner、TDH oracle golden 和 ring 恢复仍是 G1 阻塞项；不把 native API 接线写成全门通过。 |
 | 固定线程模型 | 原来没有线程计划，也没有真实 worker 启动 | 新增 capture 六线程计划和 daemon 线程预算函数/契约测试；实际 ProcessTrace、spool、alignment、SQLite worker 仍需接线。 |
 | crossbeam/ArcSwap | 当前没有引入 | 本轮不伪造依赖已落地；crossbeam 通道、分片结构和配置热替换列为并发实现卡。 |
 | Tokio | 当前未进入 workspace | 保持不引入全局 Tokio；适配层后续若需要异步 IO，只能 feature-gate。 |

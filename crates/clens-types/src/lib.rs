@@ -336,6 +336,10 @@ pub enum AssertionOp {
     AssertPostcondition,
     RollbackPlan,
     Constraint,
+    ResourceBudget,
+    NetworkAllowlist,
+    DataFlowProvenance,
+    Idempotency,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

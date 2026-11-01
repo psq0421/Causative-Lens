@@ -1,7 +1,8 @@
 use super::*;
+use clens_capture::{ReorderBuffer, ReorderHealth};
 use clens_harnessd::monitor::{self, LiveMonitor, MonitorConfig};
 use clens_types::SysEvent;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 #[cfg(windows)]
 use std::io::{Read, Seek, SeekFrom};
 use std::path::PathBuf;
@@ -22,6 +23,8 @@ pub(super) struct CaptureLine {
     event: SysEvent,
     #[serde(default)]
     path: Option<String>,
+    #[serde(default)]
+    qpc_frequency: Option<u64>,
 }
 
 #[cfg(windows)]
@@ -29,6 +32,8 @@ pub(super) struct CaptureBridge {
     process: HANDLE,
     output: PathBuf,
     lines: Receiver<Result<CaptureLine, String>>,
+    reorder: Option<ReorderBuffer>,
+    pending_paths: HashMap<u64, Option<String>>,
 }
 
 #[cfg(windows)]
@@ -43,21 +48,33 @@ impl std::fmt::Debug for CaptureBridge {
 
 #[cfg(windows)]
 impl CaptureBridge {
-    pub(super) fn start() -> Result<Option<Self>, String> {
-        let path = std::env::var_os("CAUSATIVELENS_CAPTURE_PATH")
-            .map(PathBuf::from)
-            .or_else(|| {
-                std::env::current_exe()
-                    .ok()
-                    .and_then(|exe| exe.parent().map(|parent| parent.join("clens-capture.exe")))
-            })
-            .or_else(|| Some(PathBuf::from("clens-capture.exe")));
-        let Some(path) = path else {
-            return Ok(None);
-        };
-        if !path.is_file() {
-            return Ok(None);
+    pub(super) fn start(attach_pid: Option<u32>) -> Result<Option<Self>, String> {
+        let mut candidates = Vec::new();
+        if let Some(path) = std::env::var_os("CAUSATIVELENS_CAPTURE_PATH") {
+            candidates.push(PathBuf::from(path));
         }
+        if let Ok(exe) = std::env::current_exe() {
+            candidates.extend(
+                exe.ancestors()
+                    .take(5)
+                    .map(|ancestor| ancestor.join("clens-capture.exe")),
+            );
+        }
+        if let Ok(current_dir) = std::env::current_dir() {
+            candidates.push(current_dir.join("clens-capture.exe"));
+            candidates.push(
+                current_dir
+                    .join("target")
+                    .join("debug")
+                    .join("clens-capture.exe"),
+            );
+        }
+        let path = candidates
+            .into_iter()
+            .find(|candidate| candidate.is_file())
+            .ok_or_else(|| {
+                "clens-capture.exe was not found; set CAUSATIVELENS_CAPTURE_PATH or build the capture binary beside the daemon".to_owned()
+            })?;
         let output = std::env::temp_dir().join(format!(
             "CausativeLens-capture-{}.jsonl",
             uuid::Uuid::new_v4()
@@ -68,7 +85,15 @@ impl CaptureBridge {
             .encode_utf16()
             .chain(std::iter::once(0))
             .collect();
-        let parameters = format!("--live --output \"{}\"", output.display());
+        let parameters = attach_pid.map_or_else(
+            || format!("--live --output \"{}\"", output.display()),
+            |pid| {
+                format!(
+                    "--live --attach-pid {pid} --output \"{}\"",
+                    output.display()
+                )
+            },
+        );
         let parameters_wide: Vec<u16> = parameters
             .encode_utf16()
             .chain(std::iter::once(0))
@@ -130,15 +155,65 @@ impl CaptureBridge {
             process,
             output,
             lines: line_rx,
+            reorder: None,
+            pending_paths: HashMap::new(),
         }))
     }
 
-    pub(super) fn drain(&self) -> Vec<Result<CaptureLine, String>> {
+    pub(super) fn drain(&mut self) -> Vec<Result<CaptureLine, String>> {
         let mut result = Vec::new();
         while let Ok(line) = self.lines.try_recv() {
-            result.push(line);
+            match line {
+                Ok(line) => result.extend(self.push_ordered(line)),
+                Err(error) => result.push(Err(error)),
+            }
         }
         result
+    }
+
+    fn push_ordered(&mut self, line: CaptureLine) -> Vec<Result<CaptureLine, String>> {
+        let frequency = line
+            .qpc_frequency
+            .filter(|value| *value > 0)
+            .unwrap_or(10_000_000);
+        let reorder = self
+            .reorder
+            .get_or_insert_with(|| ReorderBuffer::with_qpc_frequency(frequency));
+        self.pending_paths.insert(line.event.seq, line.path);
+        reorder
+            .push(line.event)
+            .into_iter()
+            .map(|event| {
+                Ok(CaptureLine {
+                    path: self.pending_paths.remove(&event.seq).flatten(),
+                    qpc_frequency: Some(frequency),
+                    event,
+                })
+            })
+            .collect()
+    }
+
+    pub(super) fn flush_reorder(&mut self) -> Vec<Result<CaptureLine, String>> {
+        let Some(reorder) = self.reorder.as_mut() else {
+            return Vec::new();
+        };
+        reorder
+            .flush_all()
+            .into_iter()
+            .map(|event| {
+                Ok(CaptureLine {
+                    path: self.pending_paths.remove(&event.seq).flatten(),
+                    qpc_frequency: None,
+                    event,
+                })
+            })
+            .collect()
+    }
+
+    pub(super) fn reorder_health(&self) -> ReorderHealth {
+        self.reorder
+            .as_ref()
+            .map_or_else(ReorderHealth::default, ReorderBuffer::health)
     }
 
     pub(super) fn running(&mut self) -> bool {
@@ -235,11 +310,18 @@ fn config(params: &Value) -> Result<MonitorConfig, String> {
 impl ObservationSession {
     #[cfg(windows)]
     pub(super) fn pump_capture(&mut self) {
-        let (records, running) = if let Some(capture) = self.capture.as_mut() {
-            (capture.drain(), capture.running())
+        let (mut records, running) = if let Some(capture) = self.capture.as_mut() {
+            let records = capture.drain();
+            let running = capture.running();
+            (records, running)
         } else {
             (Vec::new(), false)
         };
+        if !running {
+            if let Some(capture) = self.capture.as_mut() {
+                records.extend(capture.flush_reorder());
+            }
+        }
         for record in records {
             match record {
                 Ok(record) => {
@@ -256,6 +338,10 @@ impl ObservationSession {
                 }
                 Err(_) => self.capture_health.record_capture_failure(),
             }
+        }
+        if let Some(capture) = self.capture.as_ref() {
+            self.capture_health
+                .record_reorder_health(capture.reorder_health());
         }
         if self.capture.is_some() && !running {
             self.capture_health.record_capture_failure();
@@ -293,7 +379,15 @@ impl ObservationSession {
             "runtime_id":config.map(|c|&c.runtime_id),
             "folder":config.map(|c|&c.folder),
             "health":self.monitor.as_ref().map(LiveMonitor::health),
+            "capture_health": {
+                "events_seen": self.capture_health.events_seen,
+                "events_lost": self.capture_health.events_lost,
+                "reorder_late_events": self.capture_health.reorder_late_events,
+                "reorder_max_lateness_qpc": self.capture_health.reorder_max_lateness_qpc,
+                "reorder_non_monotonic_releases": self.capture_health.reorder_non_monotonic_releases,
+            },
             "capture_connected":capture_connected,
+            "capture_error":self.capture_error,
             "mode":"observe",
             "timeline_count":self.timeline.rows.len(),
             "assertions":self.assertion_pool.values().count()
@@ -321,15 +415,31 @@ impl DaemonState {
                 }
                 let reader = LiveMonitor::start(config(params)?)?;
                 #[cfg(windows)]
-                let capture = if params
-                    .get("capture_etw")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(true)
-                {
-                    CaptureBridge::start()?
-                } else {
-                    None
+                let (capture, capture_error) = {
+                    let mut capture_error = None;
+                    let capture = if params
+                        .get("capture_etw")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(true)
+                    {
+                        let attach_pid = params
+                            .get("attach_pid")
+                            .and_then(Value::as_u64)
+                            .and_then(|pid| u32::try_from(pid).ok());
+                        match CaptureBridge::start(attach_pid) {
+                            Ok(capture) => capture,
+                            Err(error) => {
+                                capture_error = Some(error);
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    };
+                    (capture, capture_error)
                 };
+                #[cfg(not(windows))]
+                let capture_error: Option<String> = None;
                 #[cfg(windows)]
                 let capture_connected = capture.is_some();
                 #[cfg(not(windows))]
@@ -337,6 +447,7 @@ impl DaemonState {
                 let id = Uuid::new_v4();
                 let session = ObservationSession {
                     monitor: Some(reader),
+                    capture_error,
                     #[cfg(windows)]
                     capture,
                     ..ObservationSession::default()

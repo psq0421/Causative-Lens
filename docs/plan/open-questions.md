@@ -66,6 +66,10 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 | OQ-039 | 安装器默认目录与 `%LOCALAPPDATA%\causativelens` 会话根可能重合 | 卸载若递归删除根目录会误删会话 | 默认卸载只删已知安装文件；会话扩展名/目录仅在勾选或 `/CLEANUSERDATA` 时清理，锁定文件移入 `.trash/pending` |
 | OQ-040 | NSIS 安装器无法把含反斜杠的自定义路径直接写成 JSON 字符串 | `install-manifest.json` 会产生非法 JSON | 默认 manifest 只写产品/版本/架构/模式和 payload 文件清单，不写未转义绝对路径 |
 
+| OQ-041 | ETW 窗口外迟到事件无法在有限延迟内重新排序 | 强行改写 QPC 会制造伪证，直接按到达顺序会污染 HappenBefore/After | 保留原始 QPC，累计 `reorder_late_events` 与最大迟到量；健康度降级并在查询中标记时序不确定 |
+| OQ-042 | attach 的 PID filter 是否应包含目标进程未来创建的全部子孙 PID | ETW PID filter 对动态子进程集合需要额外维护，静态单 PID 不等于完整进程树 | 当前默认先保证目标 PID + Process/File capture-state rundown 的可验证路径；子孙 PID 动态扩展作为下一张 Windows runner 卡，未验证前不宣称完整 attach 语义 |
+| OQ-043 | 旧 session manifest 没有 payload hash，无法重算历史记录摘要 | 只检查 prev 指针会把“双向篡改”误报为完整 | 默认旧链 `verify_manifest=false`；不静默重建历史摘要，用户需重新采集或显式迁移 |
+
 | OQ-039 | 新增三语要求会扩大 UI/安装器/文档维护面 | 文案漂移或 JSON 契约被误翻译 | 默认已决策：`en-US`、`zh-CN`、`zh-TW`；CLI/GUI/NSIS 各自本地化，JSON/RPC 保持英文稳定，并用架构测试锁住三语入口 |
 | OQ-040 | 旧 plan/spec/task-card 文件以中文编写，完全人工翻译会增加契约漂移风险 | 开源读者可能找不到对应语言的规范 | 默认已决策：保留原契约路径与编号，增加三语入口/索引和核心指南镜像；逐文件翻译按文档变更触发，英文镜像不得改写契约语义 |
 

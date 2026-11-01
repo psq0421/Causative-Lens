@@ -39,6 +39,8 @@ Language navigation: [English index](README.md) · [简体中文索引](README_C
 
 `event_meta` 是索引表，不是事件明细表。它只保存 `seq`、时间、进程、事件种类、路径/远端索引以及完整 payload 在 `.clspool` 列式块中的 `block_id/block_off`。`EventPayload` 的 JSON、原始缓冲区和大字段禁止写入 SQLite；`event_search` 也只能索引可检索的 kind/path/remote/image 等元数据，不得把序列化 `SysEvent` 当作全文字段。
 
+会话审计链位于 `session_manifest`：每条记录同时保存 `prev_sha256`、`payload_sha256` 和 `sha256`。`sha256 = SHA256(prev || record_kind || record_key || payload_sha256)`，验证时重算而不是只检查前后指针。旧数据库若没有 `payload_sha256`，验证结果必须为 false，不能升级为已审计会话。
+
 所有持久化必须经 `clens_storage::SessionStore::write_batch(StorageBatch)`。该 API 在存储边界内部开启事务，并一次提交事件元数据、断言和 evidence/verdict 更新；调用方没有单条 autocommit 写入接口。批次中的任意一项失败，整个批次回滚。打开旧 `.cllens` 时若发现历史 `event_meta.payload_json`，迁移会重建表并清空由 payload 生成的旧搜索索引。
 
 ## 测试契约

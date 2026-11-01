@@ -993,12 +993,25 @@ pub fn ingest_batch(
 }
 
 fn assertion_target(tool: &ToolCall) -> TargetPattern {
-    tool.arguments
-        .get("path")
-        .or_else(|| tool.arguments.get("target"))
-        .and_then(Value::as_str)
-        .map(|path| TargetPattern::Path(normalize_path_pattern(path)))
-        .unwrap_or_else(|| TargetPattern::FreeText(tool.arguments.to_string().into()))
+    [
+        "path",
+        "target",
+        "file",
+        "filename",
+        "source",
+        "destination",
+        "url",
+        "uri",
+        "host",
+        "endpoint",
+        "key",
+        "command",
+        "cmd",
+    ]
+    .into_iter()
+    .find_map(|key| tool.arguments.get(key).and_then(Value::as_str))
+    .map(|path| TargetPattern::Path(normalize_path_pattern(path)))
+    .unwrap_or_else(|| TargetPattern::FreeText(tool.arguments.to_string().into()))
 }
 
 fn assertion_id(event: &HarnessEvent, requested_id: u64, slot: u64) -> u64 {
@@ -1073,6 +1086,159 @@ fn shell_target(token: &str) -> TargetPattern {
     } else {
         TargetPattern::Path(normalize_path_pattern(token))
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RuleTemplate {
+    pub name: &'static str,
+    pub op: AssertionOp,
+    pub io_mode: IoMode,
+}
+
+const fn rule_template(name: &'static str, op: AssertionOp, io_mode: IoMode) -> RuleTemplate {
+    RuleTemplate { name, op, io_mode }
+}
+
+/// Data-driven rule templates. They deliberately describe intent families,
+/// not vendor-specific wire formats, so every adapter can reuse the same
+/// deterministic assertion compiler.
+const RULE_TEMPLATES: &[RuleTemplate] = &[
+    rule_template("read", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("read_file", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("cat", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("head", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("tail", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("less", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("more", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("grep", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("rg", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("find", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("ls", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("list_dir", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("stat", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("file", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("du", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("wc", AssertionOp::Read, IoMode::ReadOnly),
+    rule_template("write", AssertionOp::Write, IoMode::ReadWrite),
+    rule_template("write_file", AssertionOp::Write, IoMode::ReadWrite),
+    rule_template("append", AssertionOp::Write, IoMode::ReadWrite),
+    rule_template("tee", AssertionOp::Write, IoMode::ReadWrite),
+    rule_template("apply_patch", AssertionOp::Write, IoMode::ReadWrite),
+    rule_template("patch", AssertionOp::Write, IoMode::ReadWrite),
+    rule_template("create", AssertionOp::Create, IoMode::CreateNew),
+    rule_template("touch", AssertionOp::Create, IoMode::CreateNew),
+    rule_template("mkdir", AssertionOp::Create, IoMode::CreateNew),
+    rule_template("make_dir", AssertionOp::Create, IoMode::CreateNew),
+    rule_template("delete", AssertionOp::Delete, IoMode::ReadWrite),
+    rule_template("remove", AssertionOp::Delete, IoMode::ReadWrite),
+    rule_template("rm", AssertionOp::Delete, IoMode::ReadWrite),
+    rule_template("rename", AssertionOp::Rename, IoMode::ReadWrite),
+    rule_template("move", AssertionOp::Rename, IoMode::ReadWrite),
+    rule_template("mv", AssertionOp::Rename, IoMode::ReadWrite),
+    rule_template("exec", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("run", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("spawn", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("execute", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("bash", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("cmd", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("powershell", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("python", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("node", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("docker", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("kubectl", AssertionOp::Exec, IoMode::ReadWrite),
+    rule_template("connect", AssertionOp::Connect, IoMode::ReadOnly),
+    rule_template("curl", AssertionOp::Connect, IoMode::ReadOnly),
+    rule_template("wget", AssertionOp::Connect, IoMode::ReadOnly),
+    rule_template("http_get", AssertionOp::Connect, IoMode::ReadOnly),
+    rule_template("http_request", AssertionOp::Connect, IoMode::ReadOnly),
+    rule_template("fetch", AssertionOp::Connect, IoMode::ReadOnly),
+    rule_template("ssh", AssertionOp::Connect, IoMode::ReadOnly),
+    rule_template("scp", AssertionOp::Connect, IoMode::ReadOnly),
+    rule_template("git_clone", AssertionOp::Connect, IoMode::ReadOnly),
+    rule_template("bind", AssertionOp::Bind, IoMode::ReadOnly),
+    rule_template("listen", AssertionOp::Listen, IoMode::ReadOnly),
+    rule_template("reg_read", AssertionOp::RegRead, IoMode::ReadOnly),
+    rule_template("registry_get", AssertionOp::RegRead, IoMode::ReadOnly),
+    rule_template("reg_write", AssertionOp::RegWrite, IoMode::ReadWrite),
+    rule_template("registry_set", AssertionOp::RegWrite, IoMode::ReadWrite),
+    rule_template(
+        "resource_budget",
+        AssertionOp::ResourceBudget,
+        IoMode::ReadOnly,
+    ),
+    rule_template("budget", AssertionOp::ResourceBudget, IoMode::ReadOnly),
+    rule_template(
+        "network_allowlist",
+        AssertionOp::NetworkAllowlist,
+        IoMode::ReadOnly,
+    ),
+    rule_template(
+        "network_policy",
+        AssertionOp::NetworkAllowlist,
+        IoMode::ReadOnly,
+    ),
+    rule_template(
+        "data_flow",
+        AssertionOp::DataFlowProvenance,
+        IoMode::ReadOnly,
+    ),
+    rule_template(
+        "provenance",
+        AssertionOp::DataFlowProvenance,
+        IoMode::ReadOnly,
+    ),
+    rule_template("idempotent", AssertionOp::Idempotency, IoMode::ReadOnly),
+    rule_template("idempotency", AssertionOp::Idempotency, IoMode::ReadOnly),
+];
+
+pub fn rule_templates() -> &'static [RuleTemplate] {
+    RULE_TEMPLATES
+}
+
+fn rule_template_for(name: &str) -> Option<RuleTemplate> {
+    RULE_TEMPLATES
+        .iter()
+        .copied()
+        .find(|template| template.name == name)
+}
+
+fn template_target(tool: &ToolCall, op: AssertionOp) -> TargetPattern {
+    let target = assertion_target(tool);
+    if matches!(op, AssertionOp::RegRead | AssertionOp::RegWrite) {
+        return match target {
+            TargetPattern::Path(value) | TargetPattern::FreeText(value) => {
+                TargetPattern::RegistryKey(value)
+            }
+            other => other,
+        };
+    }
+    if matches!(
+        op,
+        AssertionOp::Connect | AssertionOp::Bind | AssertionOp::Listen
+    ) {
+        if let TargetPattern::Path(value) = &target {
+            return shell_target(value);
+        }
+    }
+    target
+}
+
+fn extract_rule_template(
+    event: &HarnessEvent,
+    requested_id: u64,
+    tool: &ToolCall,
+    template: RuleTemplate,
+) -> Vec<Assertion> {
+    let target = template_target(tool, template.op);
+    vec![make_assertion(
+        event,
+        requested_id,
+        0,
+        template.op,
+        target,
+        template.io_mode,
+        None,
+    )]
 }
 
 /// Data-driven shell command family names. The table is intentionally small
@@ -1176,10 +1342,18 @@ pub fn extract_rule_assertions(event: &HarnessEvent, requested_id: u64) -> Vec<A
         return Vec::new();
     };
     let name = tool.name.to_ascii_lowercase();
-    if name == "shell" || name == "exec" {
+    if name == "shell" {
         return shell_command(tool)
             .map(|command| extract_shell_assertions(event, requested_id, command))
             .unwrap_or_default();
+    }
+    if name == "exec" {
+        let shell_assertions = shell_command(tool)
+            .map(|command| extract_shell_assertions(event, requested_id, command))
+            .unwrap_or_default();
+        if !shell_assertions.is_empty() {
+            return shell_assertions;
+        }
     }
     let target = assertion_target(tool);
     match name.as_str() {
@@ -1271,7 +1445,9 @@ pub fn extract_rule_assertions(event: &HarnessEvent, requested_id: u64) -> Vec<A
             IoMode::ReadOnly,
             None,
         )],
-        _ => Vec::new(),
+        _ => rule_template_for(name.as_str())
+            .map(|template| extract_rule_template(event, requested_id, tool, template))
+            .unwrap_or_default(),
     }
 }
 
@@ -1624,6 +1800,41 @@ mod tests {
         assert_eq!(assertions[0].op, AssertionOp::Read);
         assert_eq!(assertions[1].op, AssertionOp::Write);
         assert!(assertions[1].order_key.is_some());
+    }
+
+    #[test]
+    fn rule_template_catalog_covers_resource_network_dataflow_and_idempotency() {
+        assert!(rule_templates().len() >= 60);
+        for name in [
+            "resource_budget",
+            "network_allowlist",
+            "data_flow",
+            "provenance",
+            "idempotent",
+        ] {
+            assert!(rule_templates()
+                .iter()
+                .any(|template| template.name == name));
+        }
+    }
+
+    #[test]
+    fn extended_tool_templates_compile_into_typed_assertions() {
+        let event = parse_jsonl_event(
+            br#"{"schema_v":1,"ts_utc_ms":2,"step":3,"phase":"tool_call","text":"budget","tool":{"name":"resource_budget","arguments":{"cpu_ms":300,"memory_mb":512}}}"#,
+        )
+        .expect("event");
+        let assertion = extract_rule_assertion(&event, 1).expect("budget assertion");
+        assert_eq!(assertion.op, AssertionOp::ResourceBudget);
+        assert_eq!(assertion.io_mode, IoMode::ReadOnly);
+
+        let event = parse_jsonl_event(
+            br#"{"schema_v":1,"ts_utc_ms":2,"step":4,"phase":"tool_call","text":"read registry","tool":{"name":"reg_read","arguments":{"key":"HKCU\\Software\\CausativeLens"}}}"#,
+        )
+        .expect("event");
+        let assertion = extract_rule_assertion(&event, 1).expect("registry assertion");
+        assert_eq!(assertion.op, AssertionOp::RegRead);
+        assert!(matches!(assertion.target, TargetPattern::RegistryKey(_)));
     }
 
     #[test]

@@ -50,6 +50,7 @@
 - [../spec/alignment-9.md](../spec/alignment-9.md)：评分、时间窗、水位线、路径、网络和进程归属契约
 - `task-cards/T0085-因果对齐引擎第9章复检.md`：第 9 章复检与 G3 对齐门禁
 - `task-cards/T0207-storage-payload-boundary-and-batch.md`：SQLite 明细边界、spool 定位与原子批量事务
+- `task-cards/T0208-重排断言模板审计链与真实attach.md`：64ms 重排迟到健康度、断言模板族、session manifest 重算链与真实 ETW attach/rundown
 
 - [query-11.md](../spec/query-11.md)：`why` 受限路由、五段式查询、回放叠加与终端渲染契约
 - [query-audit-11.md](query-audit-11.md)：第 11 章查询/回放/终端复检记录

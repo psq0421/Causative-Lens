@@ -60,6 +60,7 @@ pub struct ObservationSession {
     timeline: TimelineBuffer,
     seen_harness: HashSet<(u64, u64)>,
     pub capture_health: CaptureHealth,
+    pub capture_error: Option<String>,
     pub harness_health: TailHealth,
     pub process_tree: ProcessTree,
     pub path_table: HashMap<u32, String>,
@@ -87,6 +88,7 @@ impl Default for ObservationSession {
             timeline: TimelineBuffer::default(),
             seen_harness: HashSet::new(),
             capture_health: CaptureHealth::default(),
+            capture_error: None,
             harness_health: TailHealth::default(),
             process_tree: ProcessTree::default(),
             path_table: HashMap::new(),
@@ -486,11 +488,19 @@ impl ObservationSession {
     }
 
     fn query_health(&self, note: &str) -> Value {
+        let degraded = self.capture_health.events_lost > 0
+            || self.capture_health.reorder_late_events > 0
+            || self.capture_health.reorder_non_monotonic_releases > 0;
         json!({
             "events_seen": self.capture_health.events_seen,
             "spool_gaps": self.capture_health.spool_gaps,
+            "reorder_late_events": self.capture_health.reorder_late_events,
+            "reorder_max_lateness_qpc": self.capture_health.reorder_max_lateness_qpc,
+            "reorder_non_monotonic_releases": self.capture_health.reorder_non_monotonic_releases,
             "harness_quarantine": self.harness_health.quarantine_count,
-            "confidence": if self.capture_health.events_seen == 0 { 0.0 } else if self.capture_health.events_lost == 0 { 1.0 } else { 0.5 },
+            "reorder_late_events": self.capture_health.reorder_late_events,
+            "reorder_max_lateness_qpc": self.capture_health.reorder_max_lateness_qpc,
+            "confidence": if self.capture_health.events_seen == 0 { 0.0 } else if degraded { 0.5 } else { 1.0 },
             "note": note
         })
     }
@@ -590,7 +600,7 @@ impl DaemonState {
                 let session = id.and_then(|value| self.sessions.get(&value));
                 RpcResponse::ok(
                     request.id,
-                    json!({"mode":"observe", "active": session.is_some(), "sessions": self.sessions.len(), "events_seen": session.map_or(0, |value| value.capture_health.events_seen), "events_deduplicated": session.map_or(0, |value| value.duplicate_events), "matches": session.map_or(0, |value| value.matches.len()), "spool_frames": session.map_or(0, |value| value.spool_frames.len()), "harness_quarantine": session.map_or(0, |value| value.harness_health.quarantine_count), "harness_schema_changes": session.map_or(0, |value| value.harness_health.schema_change_count), "harness_truncates": session.map_or(0, |value| value.harness_health.truncate_count), "control_messages_rejected": self.rejected_controls}),
+                    json!({"mode":"observe", "active": session.is_some(), "sessions": self.sessions.len(), "events_seen": session.map_or(0, |value| value.capture_health.events_seen), "events_deduplicated": session.map_or(0, |value| value.duplicate_events), "reorder_late_events": session.map_or(0, |value| value.capture_health.reorder_late_events), "reorder_max_lateness_qpc": session.map_or(0, |value| value.capture_health.reorder_max_lateness_qpc), "reorder_non_monotonic_releases": session.map_or(0, |value| value.capture_health.reorder_non_monotonic_releases), "matches": session.map_or(0, |value| value.matches.len()), "spool_frames": session.map_or(0, |value| value.spool_frames.len()), "harness_quarantine": session.map_or(0, |value| value.harness_health.quarantine_count), "harness_schema_changes": session.map_or(0, |value| value.harness_health.schema_change_count), "harness_truncates": session.map_or(0, |value| value.harness_health.truncate_count), "control_messages_rejected": self.rejected_controls}),
                 )
             }
             "session.close" => {

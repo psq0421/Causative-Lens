@@ -9,6 +9,9 @@ clens-types = { path = "../clens-types" }
 serde_json.workspace = true
 windows-sys.workspace = true
 
+[dev-dependencies]
+proptest.workspace = true
+
 [[bin]]
 name = "clens-capture"
 path = "src/main.rs"

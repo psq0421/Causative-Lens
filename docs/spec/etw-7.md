@@ -8,7 +8,7 @@ Language navigation: [English index](README.md) · [简体中文索引](README_C
 
 采集使用四条独立实时会话，名称固定为 `CausativeLens_Process`、`CausativeLens_File`、`CausativeLens_Registry`、`CausativeLens_Network`。provider GUID 只允许来自 `docs/spec/etw-guids.json` 和 `logman query providers` 自检；代码中的 `PROVIDER_CONTRACTS` 与四个逻辑名一一对应。
 
-`CaptureLifecycle::start_all` 在 Windows 运行时必须先停止并删除同名残留会话；任一会话创建失败必须停止已创建会话并返回错误。关闭顺序是先停止消费线程、冲刷 spool，再停止 ETW 会话。当前代码已实现残留清理和部分失败回滚；真实 `StartTraceW/EnableTraceEx2/ProcessTrace` 仍是 G1 阻塞项。
+`CaptureLifecycle::start_all` 在 Windows 运行时必须先停止并删除同名残留会话；任一会话创建失败必须停止已创建会话并返回错误。关闭顺序是先停止消费线程、冲刷 spool，再停止 ETW 会话。当前 Windows 路径使用 `StartTraceW/EnableTraceEx2/ProcessTrace/ControlTraceW`；JSONL 仍是兼容桥，不是采集事实来源。
 
 ## 权限与安全
 
@@ -20,7 +20,7 @@ Language navigation: [English index](README.md) · [简体中文索引](README_C
 
 ## 解码与 oracle
 
-热路径目标是按 provider/opcode 使用无分配 cursor 解码 packed payload；无法确认布局时回落 TDH。每个手工解码器都必须有同一 `EVENT_RECORD` fixture 的 TDH golden 输出，字段、长度、UTF-16、FileObject 和 rundown 标记逐项比较。当前实现的 `decode_*_record` 接收 JSON fixture，`TdhOracle` 只有 trait 边界，尚未接入 `EVENT_RECORD`、TDH API 或 golden 对照。
+热路径目标是按 provider/opcode 使用无分配 cursor 解码 packed payload；无法确认布局时回落 TDH。每个手工解码器都必须有同一 `EVENT_RECORD` fixture 的 TDH golden 输出，字段、长度、UTF-16、FileObject 和 rundown 标记逐项比较。实时 JSON 兼容桥现在携带 QPC 频率，并在 daemon 接收边界使用 `ReorderBuffer` 按 `(ts_qpc, seq)` 应用 64ms 窗口；capture 结束时显式 flush 尾窗。窗口外迟到事件不改写原始 QPC，而是累计 `reorder_late_events`、`reorder_max_lateness_qpc` 和 `reorder_non_monotonic_releases`，查询健康度降级；这些窗口不能被渲染成绝对的 HappenBefore/After 证据。`clens-capture` 以 proptest 覆盖任意乱序输入的事件集合收敛。
 
 ## FileObject、路径和时序
 
@@ -28,7 +28,7 @@ FileCreate 建立 FileObject→PathIdx 映射，Rename 更新，Close 删除；F
 
 每 provider 消费线程使用 QPC 64ms 重排窗口；按 `(ts_qpc, seq)` 输出，关闭时必须 flush 尾窗。`SequenceAllocator` 保证 capture 侧 seq 单调。当前重排和 seq 已有纯 Rust 测试，mmap ring 和跨进程单写者接线仍未完成。
 
-rundown 必须在 Process/File 会话建立后请求，并将补发事件标记 `is_rundown=true`；对齐层只能用它做状态补全和路径归属，不能把它当观测窗口内的时序证据。当前 `request_rundown` 只记录控制状态，尚未调用 provider rundown keyword。
+rundown 必须在 Process/File 会话建立后请求，并将补发事件标记 `is_rundown=true`；对齐层只能用它做状态补全和路径归属，不能把它当观测窗口内的时序证据。当前 `request_rundown` 对 Process/File 调用 `EnableTraceEx2(EVENT_CONTROL_CODE_CAPTURE_STATE)`；attach 通过 `EVENT_FILTER_TYPE_PID` 限定目标 PID，capture 侧对 provider 的 rundown opcode/字段作保守标记，无法判定时保持 `false`。
 
 ## 过滤、丢失和背压
 
@@ -38,5 +38,5 @@ PID 过滤必须显式记录 excluded_pids；过滤事件不能伪装成“未�
 
 ## 自检与兼容矩阵
 
-CI 需要两道门：真实 Windows runner 执行 GUID 自检；TDH 与手工解码对同一 fixture 逐字段比较。Win10 1809+ x64 是 v0.1.0 当前验证矩阵；ARM64 仅保留构建/契约矩阵，按当前指示暂不做运行态承诺。
+CI 需要三道门：真实 Windows runner 执行 GUID 自检；TDH 与手工解码对同一 fixture 逐字段比较；`cargo-fuzz` 运行 capture JSON、Harness JSONL 和 spool frame 三个 target。Win10 1809+ x64 是 v0.1.0 当前验证矩阵；ARM64 仅保留构建/契约矩阵，按当前指示暂不做运行态承诺。
 

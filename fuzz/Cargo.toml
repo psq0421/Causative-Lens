@@ -1,0 +1,39 @@
+[package]
+name = "causativelens-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+clens-capture = { path = "../crates/clens-capture" }
+clens-types = { path = "../crates/clens-types" }
+clens-harnessd = { path = "../crates/clens-harnessd" }
+clens-storage = { path = "../crates/clens-storage" }
+serde_json = "1"
+
+[[bin]]
+name = "capture_json"
+path = "fuzz_targets/capture_json.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "harness_jsonl"
+path = "fuzz_targets/harness_jsonl.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "spool_frame"
+path = "fuzz_targets/spool_frame.rs"
+test = false
+doc = false
+bench = false

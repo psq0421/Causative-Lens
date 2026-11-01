@@ -14,11 +14,11 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 | 7.3 keyword | 部分完成 | ProviderContract/Full-Lean-Minimal 白名单模型已补；数值 mask 仍为兼容全 mask，需 manifest runner 校准 |
 | 7.4 手工解码/TDH | 未完成 | 当前是 JSON fixture 解码器和 TdhOracle trait 边界，无 EVENT_RECORD/TDH golden |
 | 7.5 FileObject | 部分完成 | insert/rename/close、PathInterner 已测试；28 分片、TTL/LRU、真实 FileObject 字段未接线 |
-| 7.6 重排/序列化 | 部分完成 | 64ms QPC 重排、seq 分配和 spool writer 已有；mmap ring 跨进程未完成 |
-| 7.7 rundown | 部分完成 | `is_rundown` 和显式 request state 已有；provider rundown 控制未实现 |
-| 7.8 自噪声/过滤 | 部分完成 | CaptureFilter 已有；EnableTraceEx2 PID PASS_FILTER 和 excluded manifest 未接入 |
+| 7.6 重排/序列化 | 部分完成 | 64ms QPC 重排、seq 分配、窗口外迟到健康度和 spool writer 已有；mmap ring 跨进程未完成 |
+| 7.7 rundown | 部分完成 | Windows `EnableTraceEx2(EVENT_CONTROL_CODE_CAPTURE_STATE)` 与 attach PID filter 已接线；真实提升权限 runner 仍需证明补发事件字段 |
+| 7.8 自噪声/过滤 | 部分完成 | attach 路径已通过 `EVENT_FILTER_TYPE_PID` 接入；递归子孙 PID 和 excluded manifest 仍需 runner 证据 |
 | 7.9 丢失/背压 | 部分完成 | CaptureHealth 已增加 ETW 丢失/drop 计数；QueryTrace 轮询和 80%/95% 策略未实现 |
-| 7.10 GUID/布局自检 | 部分完成 | GUID JSON、Rust 常量表、PowerShell 自检已存在；TDH golden 对照未实现 |
+| 7.10 GUID/布局自检 | 部分完成 | GUID JSON、Rust 常量表、PowerShell 自检已存在；TDH golden 对照未实现；capture/harness/spool fuzz target 已建立 |
 | 7.11 Windows 兼容 | 文档完成 | x64 Win10 1809+ 是当前目标；ARM64 暂不承诺运行态 |
 
 ## 本轮补充
@@ -28,6 +28,8 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 - `CaptureLifecycle` 增加显式 rundown 请求状态；
 - `CaptureFilter` 记录 include-only/excluded PID；
 - `CaptureHealth` 增加 `real_time_buffers_lost`、`buffer_loss_events`、`dropped_events`；
+- `ReorderBuffer` 增加窗口外迟到、最大迟到 QPC 和非单调释放计数，健康度通过 daemon/RPC 可见；
+- Windows 原生会话控制、attach PID filter 和 Process/File capture-state rundown 已接线；
 - 新增 provider、过滤、丢失健康度契约测试。
 
 ## 未静默改变

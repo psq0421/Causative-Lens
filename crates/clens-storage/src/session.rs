@@ -2,12 +2,14 @@ use crate::GRAPH_SCHEMA_V1;
 use clens_types::{Assertion, EventPayload, SysEvent, TargetPattern};
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub struct SessionStore {
     connection: Connection,
     path: PathBuf,
+    manifest_head: [u8; 32],
 }
 
 /// Location of the complete event payload in the append-only spool. SQLite
@@ -32,7 +34,7 @@ pub struct AssertionWrite {
     pub source: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub struct MatchWrite {
     pub assertion_id: u64,
     pub event_seq: u64,
@@ -63,6 +65,8 @@ pub enum StoreError {
     Sqlite(#[from] rusqlite::Error),
     #[error("json serialization error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("invalid audit manifest: {0}")]
+    InvalidManifest(String),
 }
 
 impl SessionStore {
@@ -81,8 +85,19 @@ impl SessionStore {
             "state",
             "TEXT NOT NULL DEFAULT 'partial'",
         )?;
+        add_column_if_missing(
+            &connection,
+            "session_manifest",
+            "payload_sha256",
+            "TEXT NOT NULL DEFAULT ''",
+        )?;
         migrate_legacy_event_payload(&mut connection)?;
-        Ok(Self { connection, path })
+        let manifest_head = load_manifest_head(&connection)?;
+        Ok(Self {
+            connection,
+            path,
+            manifest_head,
+        })
     }
 
     pub fn path(&self) -> &Path {
@@ -94,17 +109,81 @@ impl SessionStore {
             return Ok(());
         }
         let transaction = self.connection.transaction()?;
+        let mut manifest_head = self.manifest_head;
         for event in &batch.events {
             insert_event_meta(&transaction, event)?;
+            append_manifest_record(
+                &transaction,
+                &mut manifest_head,
+                "capture_event",
+                event.event.seq,
+                &serde_json::to_vec(&event.event)?,
+            )?;
         }
         for assertion in &batch.assertions {
             insert_assertion(&transaction, assertion)?;
+            append_manifest_record(
+                &transaction,
+                &mut manifest_head,
+                "harness_assertion",
+                assertion.assertion.id,
+                &serde_json::to_vec(&assertion.assertion)?,
+            )?;
         }
         for matched in &batch.matches {
             insert_match(&transaction, matched)?;
+            append_manifest_record(
+                &transaction,
+                &mut manifest_head,
+                "verdict",
+                matched.assertion_id,
+                &serde_json::to_vec(matched)?,
+            )?;
         }
         transaction.commit()?;
+        self.manifest_head = manifest_head;
         Ok(())
+    }
+
+    pub fn audit_head_hex(&self) -> String {
+        hex_encode(&self.manifest_head)
+    }
+
+    /// Verify the append-only chain links without loading event payloads. A
+    /// payload remains in the spool; the SQLite manifest only proves ordering
+    /// and detects edits, deletions, or insertions in the chain rows.
+    pub fn verify_manifest(&self) -> Result<bool, StoreError> {
+        let mut statement = self.connection.prepare(
+            "SELECT record_kind,record_key,prev_sha256,sha256,payload_sha256 FROM session_manifest ORDER BY ordinal ASC",
+        )?;
+        let mut expected = [0_u8; 32];
+        for row in statement.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+            ))
+        })? {
+            let (kind, key, previous, current, payload_hash) = row?;
+            if previous != hex_encode(&expected) || current.len() != 64 || payload_hash.len() != 64
+            {
+                return Ok(false);
+            }
+            let payload_digest = decode_hex(&payload_hash)?;
+            let mut hasher = Sha256::new();
+            hasher.update(expected);
+            hasher.update(kind.as_bytes());
+            hasher.update(key.to_le_bytes());
+            hasher.update(payload_digest);
+            let recomputed: [u8; 32] = hasher.finalize().into();
+            if current != hex_encode(&recomputed) {
+                return Ok(false);
+            }
+            expected = recomputed;
+        }
+        Ok(expected == self.manifest_head)
     }
 
     pub fn counts(&self) -> Result<(u64, u64, u64), StoreError> {
@@ -333,4 +412,70 @@ fn event_search_text(event: &SysEvent, path: Option<&str>, remote: Option<&str>)
         EventPayload::Reg { key, .. } => format!("{kind} {key}"),
         EventPayload::None => kind,
     }
+}
+
+fn append_manifest_record(
+    transaction: &Transaction<'_>,
+    head: &mut [u8; 32],
+    kind: &str,
+    key: u64,
+    payload: &[u8],
+) -> Result<(), StoreError> {
+    let previous = *head;
+    let payload_digest: [u8; 32] = Sha256::digest(payload).into();
+    let mut hasher = Sha256::new();
+    hasher.update(previous);
+    hasher.update(kind.as_bytes());
+    hasher.update(key.to_le_bytes());
+    hasher.update(payload_digest);
+    let digest: [u8; 32] = hasher.finalize().into();
+    transaction.execute(
+        "INSERT INTO session_manifest(record_kind,record_key,prev_sha256,sha256,payload_sha256) VALUES(?1,?2,?3,?4,?5)",
+        params![
+            kind,
+            i64::try_from(key).unwrap_or(i64::MAX),
+            hex_encode(&previous),
+            hex_encode(&digest),
+            hex_encode(&payload_digest),
+        ],
+    )?;
+    *head = digest;
+    Ok(())
+}
+
+fn load_manifest_head(connection: &Connection) -> Result<[u8; 32], StoreError> {
+    let value: Option<String> = connection
+        .query_row(
+            "SELECT sha256 FROM session_manifest ORDER BY ordinal DESC LIMIT 1",
+            [],
+            |row| row.get(0),
+        )
+        .optional()?;
+    value.map_or(Ok([0_u8; 32]), |hash| decode_hex(&hash))
+}
+
+fn hex_encode(bytes: &[u8; 32]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut output = String::with_capacity(64);
+    for byte in bytes {
+        output.push(HEX[usize::from(byte >> 4)] as char);
+        output.push(HEX[usize::from(byte & 0x0f)] as char);
+    }
+    output
+}
+
+fn decode_hex(value: &str) -> Result<[u8; 32], StoreError> {
+    if value.len() != 64 {
+        return Err(StoreError::InvalidManifest(format!(
+            "expected 64 hex characters, got {}",
+            value.len()
+        )));
+    }
+    let mut bytes = [0_u8; 32];
+    for (index, byte) in bytes.iter_mut().enumerate() {
+        let offset = index * 2;
+        *byte = u8::from_str_radix(&value[offset..offset + 2], 16)
+            .map_err(|_| StoreError::InvalidManifest(format!("invalid hex at offset {offset}")))?;
+    }
+    Ok(bytes)
 }

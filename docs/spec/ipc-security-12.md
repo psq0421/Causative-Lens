@@ -19,5 +19,5 @@ capture 不实现策略、注入、联网，也没有低权限控制服务。own
 
 ## 尚未宣称完成
 
-本轮建立协议与安全契约，但尚未把 `CreateFileMappingW(SEC_COMMIT)`、命名事件对象、跨进程 Release/Acquire 读者进度和 capture↔daemon 实际控制通道接入运行时。真实 ring 崩溃恢复、ACL Windows runner、ETW/TDH fuzz 和 SBOM/`cargo cyclonedx` 仍是 G1/G7 门禁。
+本轮建立协议与安全契约，但尚未把 `CreateFileMappingW(SEC_COMMIT)`、命名事件对象、跨进程 Release/Acquire 读者进度和 capture↔daemon 实际控制通道接入运行时。真实 ring 崩溃恢复、ACL Windows runner、TDH oracle 运行证据和 SBOM/`cargo cyclonedx` 仍是 G1/G7 门禁；capture/harness/spool 的 fuzz target 已建立，必须在 CI 运行并归档 corpus/crash 结果。
 

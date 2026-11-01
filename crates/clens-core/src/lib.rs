@@ -184,10 +184,14 @@ pub fn align_candidate(
     profile: AlignmentProfile,
 ) -> AlignmentMatch {
     let score = score_candidate(input, event, process_distance, semantic, path, profile);
+    let mut state = classify_score(score, profile);
+    if is_single_event_inconclusive(input.assertion.op) && state == VerdictState::Fulfilled {
+        state = VerdictState::Partial;
+    }
     AlignmentMatch {
         assertion_id: input.assertion.id,
         event_seq: event.seq,
-        state: classify_score(score, profile),
+        state,
         score,
     }
 }
@@ -210,12 +214,23 @@ pub fn align_candidate_at(
         path,
         profile,
     );
+    let mut state = classify_score(score, profile);
+    if is_single_event_inconclusive(input.assertion.op) && state == VerdictState::Fulfilled {
+        state = VerdictState::Partial;
+    }
     AlignmentMatch {
         assertion_id: input.assertion.id,
         event_seq: event.seq,
-        state: classify_score(score, profile),
+        state,
         score,
     }
+}
+
+fn is_single_event_inconclusive(op: AssertionOp) -> bool {
+    matches!(
+        op,
+        AssertionOp::ResourceBudget | AssertionOp::DataFlowProvenance | AssertionOp::Idempotency
+    )
 }
 
 const GENERIC_READ: u32 = 0x8000_0000;
@@ -301,6 +316,40 @@ pub fn semantic_score(assertion: &Assertion, event: &SysEvent) -> f32 {
         | AssertionOp::AssertPrecondition
         | AssertionOp::AssertPostcondition
         | AssertionOp::RollbackPlan => 0.0,
+        // These declaration families are observable constraints rather than
+        // one-shot file operations. They still participate in evidence
+        // ranking when a measurable system fact arrives; aggregate verdicts
+        // (budget totals, repeated-operation checks and provenance chains)
+        // are completed by the stateful alignment layer.
+        AssertionOp::ResourceBudget => match event.kind {
+            SysKind::FileRead | SysKind::FileWrite | SysKind::NetSend | SysKind::NetRecv => 0.7,
+            _ => 0.0,
+        },
+        AssertionOp::NetworkAllowlist => match event.kind {
+            SysKind::NetConnect
+            | SysKind::NetAccept
+            | SysKind::NetDisconnect
+            | SysKind::NetSend
+            | SysKind::NetRecv
+            | SysKind::NetListen
+            | SysKind::NetBind => 0.7,
+            _ => 0.0,
+        },
+        AssertionOp::DataFlowProvenance => match event.kind {
+            SysKind::FileRead
+            | SysKind::FileWrite
+            | SysKind::NetConnect
+            | SysKind::NetAccept
+            | SysKind::NetSend
+            | SysKind::NetRecv
+            | SysKind::RegQuery
+            | SysKind::RegSet => 0.7,
+            _ => 0.0,
+        },
+        // A single event cannot prove idempotency. Keeping this at zero is a
+        // deliberate safety boundary until the engine has a repeated-target
+        // accumulator; it prevents a false Fulfilled verdict.
+        AssertionOp::Idempotency => 0.0,
     }
 }
 
@@ -1117,6 +1166,83 @@ mod tests {
         };
         assert_eq!(semantic_score(&connect, &network), 1.0);
         assert_eq!(event_path_score(&connect, &network, &HashMap::new()), 0.6);
+    }
+
+    #[test]
+    fn declaration_templates_have_explicit_observable_boundaries() {
+        let file = event();
+        let network = SysEvent {
+            kind: SysKind::NetSend,
+            payload: EventPayload::Net {
+                proto: clens_types::NetProto::Tcp,
+                local: clens_types::Endpoint {
+                    host: "127.0.0.1".into(),
+                    port: 1,
+                },
+                remote: clens_types::Endpoint {
+                    host: "example.com".into(),
+                    port: 443,
+                },
+            },
+            ..event()
+        };
+        assert_eq!(
+            semantic_score(
+                &Assertion {
+                    op: AssertionOp::ResourceBudget,
+                    ..assertion()
+                },
+                &file
+            ),
+            0.7
+        );
+        assert_eq!(
+            semantic_score(
+                &Assertion {
+                    op: AssertionOp::NetworkAllowlist,
+                    ..assertion()
+                },
+                &network
+            ),
+            0.7
+        );
+        assert_eq!(
+            semantic_score(
+                &Assertion {
+                    op: AssertionOp::DataFlowProvenance,
+                    ..assertion()
+                },
+                &file
+            ),
+            0.7
+        );
+        assert_eq!(
+            semantic_score(
+                &Assertion {
+                    op: AssertionOp::Idempotency,
+                    ..assertion()
+                },
+                &file
+            ),
+            0.0
+        );
+        let budget = Assertion {
+            op: AssertionOp::ResourceBudget,
+            ..assertion()
+        };
+        let budget_match = align_candidate(
+            TimedAssertion {
+                assertion: &budget,
+                center_ts_ms: 1_000,
+                window_end_ms: 2_000,
+            },
+            &file,
+            0,
+            0.7,
+            1.0,
+            AlignmentProfile::default(),
+        );
+        assert_eq!(budget_match.state, VerdictState::Partial);
     }
 
     #[test]

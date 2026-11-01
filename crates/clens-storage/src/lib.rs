@@ -9,7 +9,15 @@ CREATE TABLE IF NOT EXISTS event_meta (seq INTEGER PRIMARY KEY, schema_v INTEGER
 CREATE TABLE IF NOT EXISTS paths (id INTEGER PRIMARY KEY, path TEXT UNIQUE);
 CREATE VIRTUAL TABLE IF NOT EXISTS event_search USING fts5(seq UNINDEXED, text, path, remote);
 CREATE TABLE IF NOT EXISTS interventions (id INTEGER PRIMARY KEY, assertion_id INTEGER, payload_json TEXT);
-CREATE TABLE IF NOT EXISTS decisions (id INTEGER PRIMARY KEY, intervention_id INTEGER, payload_json TEXT);"#;
+CREATE TABLE IF NOT EXISTS decisions (id INTEGER PRIMARY KEY, intervention_id INTEGER, payload_json TEXT);
+CREATE TABLE IF NOT EXISTS session_manifest (
+    ordinal INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_kind TEXT NOT NULL,
+    record_key INTEGER NOT NULL,
+    prev_sha256 TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    payload_sha256 TEXT NOT NULL DEFAULT ''
+);"#;
 
 pub const SESSION_EXTENSION: &str = ".cllens";
 pub const SPOOL_EXTENSION: &str = ".clspool";
@@ -193,6 +201,7 @@ mod tests {
     fn schema_keeps_forward_compatible_tables() {
         assert!(GRAPH_SCHEMA_V1.contains("CREATE TABLE IF NOT EXISTS interventions"));
         assert!(GRAPH_SCHEMA_V1.contains("CREATE TABLE IF NOT EXISTS decisions"));
+        assert!(GRAPH_SCHEMA_V1.contains("CREATE TABLE IF NOT EXISTS session_manifest"));
         assert!(GRAPH_SCHEMA_V1.contains("USING fts5"));
     }
     #[test]
@@ -339,6 +348,8 @@ mod session_tests {
         drop(store);
         let reopened = SessionStore::open(&path).expect("reopen");
         assert_eq!(reopened.counts().expect("counts"), (1, 1, 1));
+        assert!(reopened.verify_manifest().expect("verify manifest"));
+        assert_ne!(reopened.audit_head_hex(), "0".repeat(64));
         let connection = Connection::open(&path).expect("inspect database");
         let columns = connection
             .prepare("PRAGMA table_info(event_meta)")
@@ -456,6 +467,27 @@ mod session_tests {
         assert!(store.write_batch(batch).is_err());
         assert_eq!(store.counts().expect("counts"), (0, 0, 0));
         drop(store);
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn manifest_verification_detects_link_tampering() {
+        let path = std::env::temp_dir().join(format!(
+            "causativelens-manifest-tamper-{}.cllens",
+            std::process::id()
+        ));
+        let store = SessionStore::open(&path).expect("store");
+        drop(store);
+        let connection = Connection::open(&path).expect("database");
+        connection
+            .execute(
+                "INSERT INTO session_manifest(record_kind,record_key,prev_sha256,sha256) VALUES('capture_event',1,?1,?2)",
+                rusqlite::params!["deadbeef", "0".repeat(64)],
+            )
+            .expect("tampered row");
+        drop(connection);
+        let reopened = SessionStore::open(&path).expect("reopen");
+        assert!(!reopened.verify_manifest().expect("verify manifest"));
         let _ = std::fs::remove_file(&path);
     }
 }

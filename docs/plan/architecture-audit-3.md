@@ -12,7 +12,7 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 | 3.2 进程拓扑 | 部分落实 | daemon 会话接线、Named Pipe、Unix socket、Harness 文件/进程 tail 已有；新增 capture 生命周期入口和 append-only spool writer。mmap ring、真实 TDH 解码、SQLite writer 尚未完成，不能宣称端到端已落盘。 |
 | 3.3 时钟域 | 本次补齐可测基础 | 已有最小往返锚点选择；新增 64ms QPC 重排缓冲、持续漂移计算和超阈值刷新测试。Windows `QueryPerformanceCounter`/`GetSystemTimePreciseAsFileTime` 的 16 轮采样和 Harness 哨兵仍需实机接入。 |
 | 3.4 典型会话 | 未完全落实 | daemon 可以 ingest Harness/System 并增量对齐；CLI 仅对 `hello/open/status` 尝试 RPC，`run` 尚未自动拉起 capture/Agent，最终 flush 与 `.cllens` 写入仍缺。 |
-| 3.5 三种部署形态 | 部分落实 | `open`/离线查询契约和 observe 错误路径存在；`attach --pid` 的 rundown/进程树范围以及 `run` 的子进程生命周期尚未接通。 |
+| 3.5 三种部署形态 | 部分落实 | `open`/离线查询契约和 observe 错误路径存在；`monitor.start` 已接受 `attach_pid` 并接入 ETW PID filter/capture-state rundown；递归子孙进程范围、CLI 端到端 attach 和 `run` 子进程生命周期仍需 Windows runner 证据。 |
 
 ## 本次代码补充
 
@@ -24,7 +24,7 @@ Language navigation: [English plan index](README.en-US.md) · [简体中文计�
 
 ## 未伪造的验收项
 
-以下项目不能用静态检查替代：真实 ETW 四 provider 会话和 TDH oracle、mmap ring 跨进程崩溃恢复、QPC/UTC 16 轮同拍、SQLite `.cllens` 批量提交、`run/attach` 进程树、Windows clean VM 安装器 E2E。它们继续作为 G1/G3/G4/G7 的阻塞出口，直到产生 Windows 运行日志和可重放 fixture。
+以下项目不能用静态检查替代：真实 ETW 四 provider 会话和 TDH oracle、mmap ring 跨进程崩溃恢复、QPC/UTC 16 轮同拍、SQLite `.cllens` 批量提交、`run/attach` 进程树、Windows clean VM 安装器 E2E。attach 的 PID filter 与 capture-state 调用已有代码路径，但仍作为 G1/G3/G4/G7 阻塞出口，直到产生 Windows 运行日志和可重放 fixture。
 
 ## 检查命令
 
